@@ -1,0 +1,568 @@
+/*@font-face {
+	font-family: 'Commit Mono';
+	font-weight: 100 900;
+	font-display: swap;
+	font-style: normal;
+	src:
+		local('Commit Mono'),
+		url('/fonts/CommitMonoV142-VF.ttf') format('ttf-variations'),
+		url('/fonts/CommitMonoV142-VF.ttf') format('ttf supports variations');
+	font-weight: normal;
+	font-display: swap;
+}*/
+
+@font-face {
+	font-family: 'Departure Mono';
+	font-display: swap;
+	src:
+		local('Departure Mono'),
+		url('/fonts/DepartureMono-Regular.woff2') format('woff2');
+	font-feature-settings: 'locl';
+}
+
+:root {
+	color-scheme: light dark;
+	--radius: 0;
+	/*--background: light-dark(
+		oklch(from var(--tint) 0.99 calc(c * 0.1) h),
+		oklch(from var(--tint) 0.15 calc(c * 0.2) h)
+	);*/
+	--tint: #0047ff;
+
+	--background: oklch(from var(--tint) 0.99 calc(c * 0.1) h);
+
+	/*--background: light-dark(
+		oklch(from var(--tint) 0.99 calc(c * 0.1) h),
+		oklch(from var(--tint) 0.15 calc(c * 0.2) h)
+	);*/
+	--foreground: light-dark(
+		oklch(from var(--tint) 0.2 calc(c * 0.3) h),
+		oklch(from var(--tint) 0.88 calc(c * 0.2) h)
+	);
+	--card: oklch(1 0 0);
+	--card-foreground: light-dark(oklch(from var(--tint) 0.65 c h), oklch(from var(--tint) 0.7 c h));
+	/*light-dark(
+		oklch(from var(--tint) 0.65 c h),
+		oklch(from var(--tint) 0.7 c h)
+	)*/
+	--popover: light-dark(
+		oklch(from var(--tint) 0.94 calc(c * 0.12) h),
+		oklch(from var(--tint) 0.3 calc(c * 0.2) h)
+	);
+	--popover-foreground: oklch(0.129 0.042 264.695);
+	--primary: oklch(0.208 0.042 265.755);
+	--primary-foreground: oklch(0.984 0.003 247.858);
+	--secondary: oklch(0.968 0.007 247.896);
+	--secondary-foreground: oklch(0.208 0.042 265.755);
+	--muted: oklch(0.968 0.007 247.896);
+	--muted-foreground: oklch(0.554 0.046 257.417);
+	--accent: oklch(0.968 0.007 247.896);
+	--accent-foreground: oklch(0.208 0.042 265.755);
+	--destructive: oklch(0.577 0.245 27.325);
+	--border: oklch(0.88 0.054769 263.538);
+	/*--border: oklch(from var(--tint) 0.9 calc(c * 0.2) h);*/
+	/*--border: light-dark(
+		oklch(from var(--tint) 0.9 calc(c * 0.2) h),
+		oklch(from var(--tint) 0.45 calc(c * 0.25) h)
+	);*/
+	--input: light-dark(
+		oklch(from var(--tint) 0.97 calc(c * 0.08) h),
+		oklch(from var(--tint) 0.35 calc(c * 0.18) h)
+	);
+	--ring: oklch(0.704 0.04 256.788);
+	--chart-1: oklch(0.646 0.222 41.116);
+	--chart-2: oklch(0.6 0.118 184.704);
+	--chart-3: oklch(0.398 0.07 227.392);
+	--chart-4: oklch(0.828 0.189 84.429);
+	--chart-5: oklch(0.769 0.188 70.08);
+	--sidebar: oklch(0.984 0.003 247.858);
+	--sidebar-foreground: oklch(0.129 0.042 264.695);
+	--sidebar-primary: oklch(0.208 0.042 265.755);
+	--sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+	--sidebar-accent: oklch(0.968 0.007 247.896);
+	--sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+	--sidebar-border: oklch(0.929 0.013 255.508);
+	--sidebar-ring: oklch(0.704 0.04 256.788);
+}
+
+@theme {
+	/* ============================================
+	 * GRID ALIGNMENT
+	 * ============================================ */
+
+	--grid-x: 1ch;
+	--grid-y: 1.33rem;
+
+	/* ============================================
+	 * TYPOGRAPHY
+	 * ============================================ */
+
+	--font-sans: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, sans-serif;
+	--font-mono: 'Departure Mono', Consolas, monaco, monospace;
+	--font-serif: Georgia, 'Times New Roman', serif;
+
+	/*--text-xxxs: 0.5rem;
+	--text-xxs: 0.625rem;
+	--text-fluid-xs: clamp(0.55rem, 1.24cqi + 0.04rem, 1.03rem);
+	--text-fluid-sm: clamp(0.69rem, 1.77cqi + -0.04rem, 1.38rem);
+	--text-fluid-base: clamp(0.86rem, 2.51cqi + -0.18rem, 1.83rem);
+	--text-fluid-lg: clamp(1.07rem, 3.53cqi + -0.38rem, 2.44rem);
+	--text-fluid-xl: clamp(1.34rem, 4.94cqi + -0.69rem, 3.26rem);
+	--text-fluid-2xl: clamp(1.68rem, 6.87cqi + -1.16rem, 4.34rem);
+	--text-fluid-3xl: clamp(2.1rem, 9.52cqi + -1.83rem, 5.79rem);
+	--text-fluid-4xl: clamp(2.62rem, 13.14cqi + -2.8rem, 7.71rem);
+	--text-fluid-5xl: clamp(3.28rem, 18.08cqi + -4.18rem, 10.28rem);
+	--text-fluid-6xl: clamp(4.1rem, 24.8cqi + -6.13rem, 13.71rem);
+	--text-fluid-7xl: clamp(5.12rem, 33.93cqi + -8.88rem, 18.27rem);
+	--text-fluid-8xl: clamp(6.4rem, 46.33cqi + -12.71rem, 24.36rem);
+	--text-fluid-9xl: clamp(8rem, 63.13cqi + -18.04rem, 32.47rem);*/
+
+	/*--text-xs: 0.75rem;
+	--text-xs--line-height: calc(1 / 0.75);*/
+	/*11px*/
+	--text-sm: round(nearest, 0.6666rem, 1px);
+	--texd-sm--line-height: calc(1.25 / 0.66);
+	/*16.5px*/
+	--text-base: 1rem;
+	--text-base--line-height: calc(1.5 / 1);
+	/*22px*/
+	--text-lg: round(nearest, 1.33rem, 1px);
+	--text-lg--line-height: 1.5;
+	/*--text-lg--letter-spacing: 1px;*/
+	/*27.5px*/
+	--text-xl: round(nearest, 1.66rem, 1px);
+	--text-xl--line-height: calc(1.75 / 1.66);
+	/*33px*/
+	--text-2xl: 2rem;
+	--text-2xl--line-height: 1;
+	/*55px*/
+	--text-3xl: round(nearest, 3.33rem, 1px);
+	--text-3xl--line-height: 1;
+	--text-3xl--letter-spacing: -5px;
+	/*66px*/
+	--text-4xl: 4rem;
+	--text-4xl--line-height: 1;
+	--text-4xl--letter-spacing: -5px;
+	/* 121px */
+	--text-5xl: round(nearest, 7.33rem, 1px);
+	--text-5xl--line-height: 1;
+	--text-5xl--letter-spacing: -11px;
+
+	/*clamp(55px, 7.5vi + 25px, 121px)*/
+	/*--text-fluid-5xl: clamp(4rem, 6.25vi + 41px, round(nearest, 7.33rem, 1px));
+	--text-fluid-5xl--line-height: 1;
+	--text-fluid-5xl--letter-spacing: calc(-1 * clamp(5px, 0.8vi + 0.82px, 11px));*/
+	/*--text-6xl: 3.75rem;
+	--text-6xl--line-height: 1;
+	--text-7xl: 4.5rem;
+	--text-7xl--line-height: 1;
+	--text-8xl: 6rem;
+	--text-8xl--line-height: 1;
+	--text-9xl: 8rem;
+	--text-9xl--line-height: 1;*/
+
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+	--font-weight-extrabold: 800;
+	--font-weight-black: 900;
+
+	/* Body font - override this to change the default font */
+	--font-body: var(--font-mono);
+
+	/* Font sizing */
+	--font-size: 16px;
+	--line-height: 1.33;
+
+	/* ============================================
+	 * BORDER RADIUS
+	 * ============================================ */
+
+	--radius-sm: 0.25rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.75rem;
+	--radius-xl: 1rem;
+	--radius-2xl: 1.5rem;
+	--radius-full: 9999px;
+
+	/* Default radius for components */
+	--radius-default: var(--radius-md);
+
+	/* ============================================
+	 * TINT DEFINITIONS
+	 * Base tint colors for accent theming
+	 * ============================================ */
+
+	--tint: #0047ff;
+
+	/* ============================================
+	 * SEMANTIC THEME COLORS
+	 * These reference CSS custom properties that
+	 * change based on light/dark mode
+	 * ============================================ */
+}
+@layer base {
+	a,
+	abbr,
+	acronym,
+	address,
+	applet,
+	article,
+	aside,
+	audio,
+	b,
+	big,
+	blockquote,
+	body,
+	canvas,
+	caption,
+	center,
+	cite,
+	code,
+	dd,
+	del,
+	details,
+	dfn,
+	div,
+	dl,
+	dt,
+	embed,
+	em,
+	figure,
+	figcaption,
+	fieldset,
+	footer,
+	form,
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	header,
+	hgroup,
+	html,
+	i,
+	iframe,
+	img,
+	ins,
+	kbd,
+	label,
+	legend,
+	li,
+	mark,
+	menu,
+	nav,
+	object,
+	ol,
+	output,
+	p,
+	pre,
+	q,
+	ruby,
+	s,
+	samp,
+	section,
+	small,
+	span,
+	strike,
+	strong,
+	sub,
+	summary,
+	sup,
+	table,
+	tbody,
+	td,
+	tfoot,
+	th,
+	thead,
+	time,
+	tr,
+	tt,
+	u,
+	ul,
+	var,
+	video {
+		border: 0;
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+		vertical-align: baseline;
+	}
+
+	a {
+		/*background: var(--theme-border-subdued);*/
+		background: var(--color-border);
+		/*color: var(--theme-text);*/
+
+		&:hover {
+			/*background: var(--theme-focused-foreground);*/
+			background: var(--color-card-foreground);
+			color: var(--color-foreground);
+			/*color: var(--theme-text);*/
+		}
+
+		&:focus {
+			/*background: var(--theme-focused-foreground);*/
+			background: var(--color-card-foreground);
+			/*color: var(--theme-text);*/
+			color: var(--color-foreground);
+			outline: 0;
+		}
+	}
+
+	ul {
+		list-style-position: inside;
+		list-style-type: '▪';
+		text-indent: -1ch;
+	}
+
+	ol {
+		list-style-type: '';
+		list-style-position: inside;
+		counter-reset: cupcake;
+		text-indent: -1ch;
+	}
+
+	ul ul,
+	ul ol,
+	ol ul,
+	ol ol {
+		padding-left: 2ch;
+	}
+
+	ol li {
+		padding-left: 1ch;
+		counter-increment: cupcake;
+	}
+
+	ul li:before {
+		content: ' ';
+		display: inline-block;
+		width: 1ch;
+		height: 0;
+		visibility: hidden;
+	}
+
+	ol li:before {
+		content: counters(cupcake, '.') '. ';
+	}
+
+	input::-webkit-outer-spin-button,
+	input::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
+	/* Firefox */
+	input[type='number'] {
+		-moz-appearance: textfield;
+	}
+
+	html,
+	body {
+		font-synthesis: none;
+		/*text-rendering: optimizeLegibility;*/
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		overscroll-behavior: none;
+		font-optical-sizing: auto;
+		text-rendering: geometricPrecision;
+		font-weight: 400;
+		font-variant-numeric: tabular-nums lining-nums;
+		--font-family: -apple-system, BlinkMacSystemFont, helvetica neue, helvetica, sans-serif;
+		--font-family-mono: 'Departure Mono', Consolas, monaco, monospace;
+		--font-family-serif: Georgia, Times New Roman, serif;
+
+		/*--theme-text: var(--color-black-100);*/
+		--theme-line-height-base: 1.33;
+
+		font-family: var(--font-family-mono);
+		line-height: var(--grid-y);
+
+		font-size: var(--font-size);
+
+		&::-webkit-scrollbar {
+			background: transparent;
+			height: calc(var(--theme-line-height-base) * 1rem);
+			width: 1ch;
+		}
+
+		&::-webkit-scrollbar-track {
+			background: var(--theme-background);
+		}
+
+		&::-webkit-scrollbar-thumb {
+			background: var(--theme-border);
+		}
+
+		&::-webkit-scrollbar-thumb:hover {
+			background: var(--theme-border);
+		}
+
+		--tint: var(--tint-blue);
+		--theme-background: light-dark(
+			oklch(from var(--tint) 0.99 calc(c * 0.1) h),
+			oklch(from var(--tint) 0.15 calc(c * 0.2) h)
+		);
+		--theme-background-modal: light-dark(
+			oklch(from var(--tint) 0.94 calc(c * 0.12) h),
+			oklch(from var(--tint) 0.3 calc(c * 0.2) h)
+		);
+		--theme-background-modal-footer: light-dark(
+			oklch(from var(--tint) 0.9 calc(c * 0.2) h),
+			oklch(from var(--tint) 0.25 calc(c * 0.22) h)
+		);
+		--theme-background-input: light-dark(
+			oklch(from var(--tint) 0.97 calc(c * 0.08) h),
+			oklch(from var(--tint) 0.35 calc(c * 0.18) h)
+		);
+		--theme-border: light-dark(
+			oklch(from var(--tint) 0.9 calc(c * 0.2) h),
+			oklch(from var(--tint) 0.45 calc(c * 0.25) h)
+		);
+		--theme-border-subdued: light-dark(
+			oklch(from var(--tint) 0.92 calc(c * 0.15) h),
+			oklch(from var(--tint) 0.45 calc(c * 0.25) h / 0.6)
+		);
+		--theme-text: light-dark(
+			oklch(from var(--tint) 0.2 calc(c * 0.3) h),
+			oklch(from var(--tint) 0.88 calc(c * 0.2) h)
+		);
+		--theme-button: light-dark(
+			oklch(from var(--tint) 0.2 calc(c * 0.3) h),
+			oklch(from var(--tint) 0.88 calc(c * 0.2) h)
+		);
+		--theme-button-text: light-dark(
+			oklch(from var(--tint) 0.99 calc(c * 0.1) h),
+			oklch(from var(--tint) 0.15 calc(c * 0.2) h)
+		);
+		--theme-button-foreground: light-dark(
+			oklch(from var(--tint) 0.92 calc(c * 0.15) h),
+			oklch(from var(--tint) 0.35 calc(c * 0.25) h)
+		);
+		--theme-button-background: light-dark(
+			oklch(from var(--tint) 0.9 calc(c * 0.2) h),
+			oklch(from var(--tint) 0.3 calc(c * 0.2) h)
+		);
+		--theme-focused-foreground: light-dark(
+			oklch(from var(--tint) 0.65 c h),
+			oklch(from var(--tint) 0.7 c h)
+		);
+		--theme-focused-foreground-subdued: light-dark(
+			oklch(from var(--tint) 0.65 c h / 0.5),
+			oklch(from var(--tint) 0.7 c h / 0.5)
+		);
+	}
+}
+/*
+ * Runtime Theme Variables
+ *
+ * These CSS custom properties change based on theme class.
+ * They're referenced by the @theme semantic colors above.
+ */
+
+/* ============================================
+ * LIGHT MODE (Default)
+ * ============================================ */
+/*:root,
+body {
+	--theme-overlay: var(--color-black-100-4);
+	--theme-background: var(--color-white);
+	--theme-background-modal: var(--color-gray-20);
+	--theme-background-modal-footer: var(--color-gray-40);
+	--theme-background-input: var(--color-gray-10);
+	--theme-border: var(--color-gray-20);
+	--theme-border-subdued: var(--color-gray-40-2);
+	--theme-text: var(--color-black-100);
+	--theme-button: var(--color-black-100);
+	--theme-button-text: var(--color-white);
+	--theme-button-foreground: var(--color-gray-30);
+	--theme-button-background: var(--color-gray-20);
+	--theme-focused-foreground: var(--color-neon-green-50);
+	--theme-focused-foreground-subdued: var(--color-neon-green-50-5);
+	--primary-color: var(--color-neon-green-50);
+}*/
+
+/* ============================================
+ * DARK MODE
+ * ============================================ */
+/*body.theme-dark {
+	--theme-overlay: var(--color-black-100-4);
+	--theme-background: var(--color-black-100);
+	--theme-background-modal: var(--color-gray-80);
+	--theme-background-modal-footer: var(--color-gray-70);
+	--theme-background-input: var(--color-gray-60);
+	--theme-border: var(--color-gray-80);
+	--theme-border-subdued: var(--color-gray-70-3);
+	--theme-text: var(--color-white);
+	--theme-button: var(--color-white);
+	--theme-button-text: var(--color-black-100);
+	--theme-button-foreground: var(--color-gray-90);
+	--theme-button-background: var(--color-gray-80);
+	--theme-focused-foreground: var(--color-daybreak-10);
+	--theme-focused-foreground-subdued: var(--color-daybreak-10-5);
+	--primary-color: var(--color-daybreak-10);
+}*/
+
+/* ============================================
+ * TINT CLASSES
+ * Apply to body alongside theme class
+ * ============================================ */
+
+body {
+	--tint: var(--tint-blue);
+	--theme-background: light-dark(
+		oklch(from var(--tint) 0.99 calc(c * 0.1) h),
+		oklch(from var(--tint) 0.15 calc(c * 0.2) h)
+	);
+	--theme-background-modal: light-dark(
+		oklch(from var(--tint) 0.94 calc(c * 0.12) h),
+		oklch(from var(--tint) 0.3 calc(c * 0.2) h)
+	);
+	--theme-background-modal-footer: light-dark(
+		oklch(from var(--tint) 0.9 calc(c * 0.2) h),
+		oklch(from var(--tint) 0.25 calc(c * 0.22) h)
+	);
+	--theme-background-input: light-dark(
+		oklch(from var(--tint) 0.97 calc(c * 0.08) h),
+		oklch(from var(--tint) 0.35 calc(c * 0.18) h)
+	);
+	--theme-border: light-dark(
+		oklch(from var(--tint) 0.9 calc(c * 0.2) h),
+		oklch(from var(--tint) 0.45 calc(c * 0.25) h)
+	);
+	--theme-border-subdued: light-dark(
+		oklch(from var(--tint) 0.92 calc(c * 0.15) h),
+		oklch(from var(--tint) 0.45 calc(c * 0.25) h / 0.6)
+	);
+	--theme-text: light-dark(
+		oklch(from var(--tint) 0.2 calc(c * 0.3) h),
+		oklch(from var(--tint) 0.88 calc(c * 0.2) h)
+	);
+	--theme-button: light-dark(
+		oklch(from var(--tint) 0.2 calc(c * 0.3) h),
+		oklch(from var(--tint) 0.88 calc(c * 0.2) h)
+	);
+	--theme-button-text: light-dark(
+		oklch(from var(--tint) 0.99 calc(c * 0.1) h),
+		oklch(from var(--tint) 0.15 calc(c * 0.2) h)
+	);
+	--theme-button-foreground: light-dark(
+		oklch(from var(--tint) 0.92 calc(c * 0.15) h),
+		oklch(from var(--tint) 0.35 calc(c * 0.25) h)
+	);
+	--theme-button-background: light-dark(
+		oklch(from var(--tint) 0.9 calc(c * 0.2) h),
+		oklch(from var(--tint) 0.3 calc(c * 0.2) h)
+	);
+	--theme-focused-foreground: light-dark(
+		oklch(from var(--tint) 0.65 c h),
+		oklch(from var(--tint) 0.7 c h)
+	);
+	--theme-focused-foreground-subdued: light-dark(
+		oklch(from var(--tint) 0.65 c h / 0.5),
+		oklch(from var(--tint) 0.7 c h / 0.5)
+	);
+}

@@ -1,0 +1,17 @@
+{
+  "name": "stretch-deck-stretch-deck-web-dev",
+  "main": "../../.svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2025-12-10",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "nodejs_compat_populate_process_env"
+  ],
+  "assets": {
+    "directory": "../../.svelte-kit/cloudflare",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": false
+  },
+  "vars": {}
+}
