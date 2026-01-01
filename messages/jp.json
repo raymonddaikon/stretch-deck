@@ -1,0 +1,113 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"welcome": "よこそ",
+	"card": "カード",
+	"cards": "カード",
+	"deck": "デッキ",
+	"decks": "デッキ",
+	"profile": "プロフィル",
+	"remove": "Remove",
+	"remove_disclosure": "You do not have delete permission for this card, you can only remove it from your collection; however it will still exist in any decks you have.",
+	"remove_deck_disclosure": "You do not have delete permission for this deck, you can only remove it from your collection.",
+	"delete": "デリート",
+	"delete_confirm": "いいですか？",
+	"delete_disclosure": "これにより、あなたのコレクションと編集アクセス権を持つデッキからカードが削除されますが、このカードにアクセスできる他のユーザーは引き続きカードを所有します。",
+	"confirm_delete_deck": "このデッキを削除しますか？",
+	"edit": "編集",
+	"cancel": "キャンセル",
+	"center": "センータ",
+	"crop": "トリム",
+	"fill": "フィル",
+	"dither": "ディザ",
+	"complete": "終了",
+	"create_deck": "デッキを作る",
+	"create_card": "カードを作る",
+	"all_decks": "全てのデッキ",
+	"all_cards": "全てのカード",
+	"camera": "カメラ",
+	"upload": "アップロード",
+	"paste_upload_link": "または招待リンクを貼り付ける",
+	"card_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} カード",
+				"countPlural=other": "{count} カード"
+			}
+		}
+	],
+	"deck_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} デッキ",
+				"countPlural=other": "{count} デッキ"
+			}
+		}
+	],
+	"completion_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count}人が完了しました",
+				"countPlural=other": "{count}人が完了しました"
+			}
+		}
+	],
+	"add": "追加",
+	"title": "タイトル",
+	"edit_card": "カードを編集",
+	"edit_deck": "デッキを編集",
+	"save_card": "カードを保存",
+	"save_deck": "デッキを保存",
+	"card_title_placeholder": "大きなストレッチ",
+	"card_areas_placeholder": "首, 背中, 〜",
+	"areas": "エリア",
+	"reps": "レップ",
+	"sets": "セート",
+	"description": "詳細",
+	"card_description_placeholder": "ストレッチをどうやったらいい",
+	"deck_description_placeholder": "このデッキをどうな使えかた?",
+	"sort": "デッキ順序",
+	"deck_name_placeholder": "デッキの名前",
+	"name": "名前",
+	"select_cards": "デッキに入れたいカッドを選べ",
+	"done_sorting": "並べ替え完了",
+	"create_account_title": "アカウントを作る",
+	"create_account_description": "カードとデッキを保存して、すべてのデバイスからアクセスできます",
+	"continue_with_google": "Googleで進む",
+	"continue_with_github": "Continue with GitHub",
+	"continue_with_apple": "Continue with Apple",
+	"or_use_email": "Or sign in with email",
+	"email_placeholder": "you@example.com",
+	"send_magic_link": "Send Magic Link",
+	"sending": "Sending...",
+	"magic_link_sent_title": "Check your email",
+	"magic_link_sent_description": "We sent a sign-in link to {email}. Click the link in the email to sign in.",
+	"try_different_email": "Try a different email",
+	"friends": "Friends",
+	"friend_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} friend",
+				"countPlural=other": "{count} friends"
+			}
+		}
+	],
+	"no_friends_yet": "No friends yet",
+	"activity": "活動",
+	"sign_out": "サインアウト",
+	"language": "言語",
+	"english": "English",
+	"japanese": "日本語",
+	"delete_account": "アカウントを削除",
+	"delete_account_confirm": "アカウントを削除しますか？",
+	"delete_account_disclosure": "アカウントと関連するすべてのデータが完全に削除されます。この操作は元に戻せません。",
+	"delete_account_button": "はい、アカウントを削除します",
+	"deleting": "削除中..."
+}

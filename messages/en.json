@@ -1,0 +1,113 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"welcome": "Welcome",
+	"card": "Card",
+	"cards": "cards",
+	"deck": "Deck",
+	"decks": "decks",
+	"profile": "Profile",
+	"delete": "Delete",
+	"remove": "Remove",
+	"remove_disclosure": "You do not have delete permission for this card, you can only remove it from your collection; however it will still exist in any decks you have.",
+	"remove_deck_disclosure": "You do not have delete permission for this deck, you can only remove it from your collection.",
+	"delete_confirm": "Are you sure?",
+	"delete_disclosure": "This will delete the card from your collection as well as decks you have edit access to, other users that have access to this card will still have the card.",
+	"confirm_delete_deck": "Delete this deck?",
+	"edit": "Edit",
+	"cancel": "Cancel",
+	"center": "Center",
+	"crop": "Crop",
+	"fill": "Fill",
+	"dither": "Dither",
+	"complete": "Complete",
+	"create_deck": "Create Deck",
+	"create_card": "Create Card",
+	"all_decks": "All Decks",
+	"all_cards": "All Cards",
+	"camera": "Camera",
+	"upload": "Upload",
+	"paste_upload_link": "or paste upload link",
+	"card_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} card",
+				"countPlural=other": "{count} cards"
+			}
+		}
+	],
+	"deck_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} deck",
+				"countPlural=other": "{count} decks"
+			}
+		}
+	],
+	"completion_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} user completed",
+				"countPlural=other": "{count} users completed"
+			}
+		}
+	],
+	"add": "Add",
+	"title": "Title",
+	"edit_card": "Edit Card",
+	"edit_deck": "Edit Deck",
+	"save_card": "Save Card",
+	"save_deck": "Save Deck",
+	"card_title_placeholder": "Big Stretch",
+	"card_areas_placeholder": "Neck, Back, etc.",
+	"areas": "Areas",
+	"reps": "Reps",
+	"sets": "Sets",
+	"description": "Description",
+	"card_description_placeholder": "Additional notes on how the stretch is done",
+	"deck_description_placeholder": "What is this deck used for?",
+	"sort": "Sort Deck",
+	"deck_name_placeholder": "Deck Name",
+	"name": "Name",
+	"select_cards": "Select cards to add to your deck.",
+	"done_sorting": "Done Sorting",
+	"create_account_title": "Create an Account",
+	"create_account_description": "Save your cards and decks and access them across all your devices.",
+	"continue_with_google": "Continue with Google",
+	"continue_with_github": "Continue with GitHub",
+	"continue_with_apple": "Continue with Apple",
+	"or_use_email": "Or sign in with email",
+	"email_placeholder": "you@example.com",
+	"send_magic_link": "Send Magic Link",
+	"sending": "Sending...",
+	"magic_link_sent_title": "Check your email",
+	"magic_link_sent_description": "We sent a sign-in link to {email}. Click the link in the email to sign in.",
+	"try_different_email": "Try a different email",
+	"friends": "friends",
+	"friend_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} friend",
+				"countPlural=other": "{count} friends"
+			}
+		}
+	],
+	"no_friends_yet": "No friends yet",
+	"activity": "Activity",
+	"sign_out": "Sign Out",
+	"language": "Language",
+	"english": "English",
+	"japanese": "Japanese",
+	"delete_account": "Delete Account",
+	"delete_account_confirm": "Delete your account?",
+	"delete_account_disclosure": "This will permanently delete your account and all associated data. This action cannot be undone.",
+	"delete_account_button": "Yes, Delete My Account",
+	"deleting": "Deleting..."
+}
