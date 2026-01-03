@@ -19,7 +19,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.3.10",
 		"@inlang/paraglide-js": "^2.7.1",
-		"@internationalized/date": "^3.10.0",
+		"@internationalized/date": "^3.10.1",
 		"@lucide/svelte": "^0.562.0",
 		"@playwright/test": "^1.57.0",
 		"@sveltejs/adapter-cloudflare": "^7.2.4",
@@ -52,19 +52,19 @@
 		"vitest-browser-svelte": "^2.0.1"
 	},
 	"dependencies": {
-		"@blossom-carousel/core": "^0.2.0",
+		"@blossom-carousel/core": "^1.0.0",
 		"@dnd-kit-svelte/svelte": "^0.1.5",
 		"@imgly/background-removal": "^1.7.0",
 		"@paper-design/shaders": "^0.0.68",
 		"alchemy": "^0.82.2",
 		"better-auth": "^1.4.10",
-		"jazz-tools": "^0.19.15",
-		"melt": "^0.42.0",
+		"jazz-tools": "^0.19.16",
+		"melt": "^0.43.0",
 		"mode-watcher": "^1.1.0",
 		"motion": "^12.23.26",
 		"motion-sv": "^0.1.8",
-		"remeda": "^2.33.0",
+		"remeda": "^2.33.1",
 		"runed": "^0.37.1",
-		"zod": "^3.24.1"
+		"zod": "^4.3.4"
 	}
 }

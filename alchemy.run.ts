@@ -13,7 +13,7 @@ const app = await alchemy('stretch-deck', {
 	stage: 'dev'
 })
 
-export const worker = await SvelteKit('stretch-deck-web', {
+export const worker = await SvelteKit('stretch-deck-beta', {
 	// cwd: './apps/web',
 	compatibility: 'node'
 	// bindings: {

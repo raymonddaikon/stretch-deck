@@ -3,6 +3,7 @@
 	import { AccountCoState } from 'jazz-tools/svelte';
 	import { flushSync } from 'svelte';
 	import { MediaQuery, SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import type { ZodError } from 'zod';
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
@@ -48,7 +49,13 @@
 	let deckDescription = $state(initialDeck?.description ?? '');
 
 	// Form validation errors
-	let errors = $state<Record<string, string>>({});
+	let errors = $state<
+		| ZodError<{
+				name: string;
+				description: string;
+		  }>
+		| undefined
+	>();
 
 	const buttonLabel = $derived(mode === 'create' ? 'Create Deck' : 'Save Deck');
 
@@ -198,17 +205,11 @@
 
 		if (!result.success) {
 			const newErrors: Record<string, string> = {};
-			for (const issue of result.error.errors) {
-				const path = issue.path[0] as string;
-				if (path && !newErrors[path]) {
-					newErrors[path] = issue.message;
-				}
-			}
-			errors = newErrors;
+			errors = result.error;
 			return;
 		}
 
-		errors = {};
+		errors = undefined;
 		if (!me.current.$isLoaded) {
 			return;
 		}
@@ -324,7 +325,7 @@
 			<Field.Group
 				class="flex max-h-full w-full flex-row gap-1 pt-1.5 pr-1 md:flex-col md:gap-4 md:pt-0 md:pr-0"
 			>
-				<Field.Field class="flex min-w-0 flex-1 gap-1" data-invalid={!!errors.name}>
+				<Field.Field class="flex min-w-0 flex-1 gap-1" data-invalid={!!errors?.name}>
 					<Field.Label
 						class="bg-foreground px-0.5 text-sm leading-snug font-normal text-black uppercase"
 						>Name</Field.Label
@@ -337,11 +338,11 @@
 						bind:value={deckName}
 						class="text-base text-black md:text-xl"
 					/>
-					{#if errors.name}
+					{#if errors}
 						<Field.Error>{errors.name}</Field.Error>
 					{/if}
 				</Field.Field>
-				<Field.Field class="relative flex min-w-0 flex-1 gap-1" data-invalid={!!errors.description}>
+				<Field.Field class="relative flex min-w-0 flex-1 gap-1" data-invalid={!!errors?.message}>
 					<Field.Label
 						class="bg-foreground px-0.5 text-sm leading-snug font-normal text-black uppercase"
 						>Description</Field.Label
@@ -353,8 +354,8 @@
 						bind:value={deckDescription}
 						class="max-h-full min-h-20 max-w-full resize-none overflow-y-auto pt-1 text-sm text-black md:text-base"
 					/>
-					{#if errors.description}
-						<Field.Error>{errors.description}</Field.Error>
+					{#if errors}
+						<Field.Error>{errors.message}</Field.Error>
 					{/if}
 				</Field.Field>
 			</Field.Group>

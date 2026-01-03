@@ -1,5 +1,5 @@
 {
-  "name": "stretch-deck-stretch-deck-web-dev",
+  "name": "stretch-deck-stretch-deck-beta-dev",
   "main": "../../.svelte-kit/cloudflare/_worker.js",
   "compatibility_date": "2025-12-10",
   "compatibility_flags": [

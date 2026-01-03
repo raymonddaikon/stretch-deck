@@ -3,6 +3,7 @@
 	import { createImage } from 'jazz-tools/media';
 	import { AccountCoState } from 'jazz-tools/svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import type { ZodError } from 'zod';
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import * as Field from '$lib/components/ui/field';
@@ -41,7 +42,13 @@
 	let changedImageIndices = new SvelteSet<number>();
 	let headerImages = $state<(string | null)[]>([null, null, null]);
 
-	let errors = $state<Record<string, string>>({});
+	let errors = $state<
+		| ZodError<{
+				name: string;
+				description: string;
+		  }>
+		| undefined
+	>();
 
 	function handleImagesChange(images: (string | null)[], index: number) {
 		headerImages = images;
@@ -79,18 +86,13 @@
 
 		if (!result.success) {
 			const newErrors: Record<string, string> = {};
-			for (const issue of result.error.errors) {
-				const path = issue.path[0] as string;
-				if (path && !newErrors[path]) {
-					newErrors[path] = issue.message;
-				}
-			}
-			errors = newErrors;
+
+			errors = result.error;
 			console.log('Validation errors:', errors);
 			return;
 		}
 
-		errors = {};
+		errors = undefined;
 
 		if (!me.current.$isLoaded) {
 			return;
