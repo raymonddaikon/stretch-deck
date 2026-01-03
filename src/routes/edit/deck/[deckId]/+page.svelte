@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { DeckEditor } from '$lib/components/ui/deck-editor';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import { Deck, StretchDeckAccount } from '$lib/schema';
 
 	// Load the current user's cards (available cards to choose from)
@@ -30,13 +31,18 @@
 	const layout = getLayoutContext();
 
 	$effect(() => {
-		layout.title = 'Edit Deck';
+		layout.title = m.edit_deck();
 		layout.subtitle = deck.current?.$isLoaded ? (deck.current.name ?? '') : '';
 	});
 </script>
 
 {#if deck.current?.$isLoaded && availableCards}
-	<DeckEditor mode="edit" cards={availableCards} initialDeck={deck.current} />
+	<DeckEditor
+		mode="edit"
+		cards={availableCards}
+		initialDeck={deck.current}
+		viewTransitionName={`deck-${deck.current.$jazz.id}`}
+	/>
 {:else}
 	<div class="flex h-full w-full items-center justify-center">
 		<span class="text-gray-500">Loading deck...</span>

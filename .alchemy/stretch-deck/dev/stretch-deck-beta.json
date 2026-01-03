@@ -1,0 +1,80 @@
+{
+  "kind": "cloudflare::Worker",
+  "id": "stretch-deck-beta",
+  "fqn": "stretch-deck/dev/stretch-deck-beta",
+  "seq": 1,
+  "data": {},
+  "status": "created",
+  "output": {
+    "Symbol(alchemy::ResourceKind)": "cloudflare::Worker",
+    "Symbol(alchemy::ResourceID)": "stretch-deck-beta",
+    "Symbol(alchemy::ResourceFQN)": "stretch-deck/dev/stretch-deck-beta",
+    "Symbol(alchemy::ResourceScope)": {
+      "@scope": null
+    },
+    "Symbol(alchemy::ResourceSeq)": 1,
+    "compatibility": "node",
+    "entrypoint": ".svelte-kit/cloudflare/_worker.js",
+    "compatibilityFlags": [
+      "nodejs_compat",
+      "nodejs_compat_populate_process_env"
+    ],
+    "compatibilityDate": "2025-12-10",
+    "wrangler": {
+      "secrets": true
+    },
+    "name": "stretch-deck-stretch-deck-beta-dev",
+    "cwd": "",
+    "assets": {
+      "html_handling": "auto-trailing-slash",
+      "not_found_handling": "single-page-application",
+      "run_worker_first": false,
+      "directory": ".svelte-kit/cloudflare"
+    },
+    "bindings": {
+      "ASSETS": {
+        "type": "assets",
+        "path": ".svelte-kit/cloudflare"
+      }
+    },
+    "dev": {
+      "hasRemote": true
+    },
+    "type": "service",
+    "id": "stretch-deck-beta",
+    "format": "esm",
+    "createdAt": {
+      "@date": "2026-01-01T11:32:01.666Z"
+    },
+    "updatedAt": {
+      "@date": "2026-01-01T11:32:01.666Z"
+    },
+    "url": "https://stretch-deck-stretch-deck-beta-dev.ray-dc0.workers.dev"
+  },
+  "props": {
+    "compatibility": "node",
+    "entrypoint": ".svelte-kit/cloudflare/_worker.js",
+    "compatibilityFlags": [
+      "nodejs_compat",
+      "nodejs_compat_populate_process_env"
+    ],
+    "compatibilityDate": "2025-12-10",
+    "wrangler": {
+      "secrets": true
+    },
+    "name": "stretch-deck-stretch-deck-beta-dev",
+    "cwd": "",
+    "assets": {
+      "html_handling": "auto-trailing-slash",
+      "not_found_handling": "single-page-application",
+      "run_worker_first": false,
+      "directory": ".svelte-kit/cloudflare"
+    },
+    "bindings": {
+      "ASSETS": {
+        "type": "assets",
+        "path": ".svelte-kit/cloudflare"
+      }
+    }
+  }
+}

@@ -8,9 +8,11 @@
 		progress: { value: number };
 		length: number;
 		renderCard: Snippet<[number]>;
+		/** Optional key to force re-render of cards */
+		transitionKey?: unknown;
 	}
 
-	let { progress = $bindable(), length, renderCard }: Props = $props();
+	let { progress = $bindable(), length, renderCard, transitionKey }: Props = $props();
 
 	const touchSupport = new MediaQuery('(pointer: coarse) and (hover: none)');
 
@@ -54,7 +56,7 @@
 <style>
 	.snap {
 		width: 100%;
-		height: 100dvh;
+		height: 100svh;
 		scroll-snap-type: y mandatory;
 		scrollbar-width: none;
 		overflow: auto;

@@ -2,6 +2,7 @@
 	import { AccountCoState } from 'jazz-tools/svelte';
 	import { DeckEditor } from '$lib/components/ui/deck-editor';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import { StretchDeckAccount } from '$lib/schema';
 
 	const me = new AccountCoState(StretchDeckAccount, {
@@ -13,10 +14,10 @@
 
 	const layout = getLayoutContext();
 
-	$effect(() => {
-		layout.title = 'Create Deck';
-		layout.subtitle = '';
-	});
+	// $effect(() => {
+	// 	layout.title = m.create_deck();
+	// 	layout.subtitle = '';
+	// });
 </script>
 
 {#if me.current.$isLoaded && me.current.profile.cards.$isLoaded}

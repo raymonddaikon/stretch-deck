@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import Deck from '$lib/components/ui/deck/deck.svelte';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import { ActivityItem, Deck as DeckSchema } from '$lib/schema';
 
 	const deck = new CoState(DeckSchema, () => page.params.deckId as ID<typeof DeckSchema>, {
@@ -28,32 +29,35 @@
 </script>
 
 {#if deck.current.$isLoaded}
-	<Deck
-		class="col-span-3 row-span-3"
-		deck={deck.current}
-		completedCards={[...completedCards]}
-		onDeckComplete={() => {
-			if (deck.current.$isLoaded && deck.current.activity.$isLoaded) {
-				deck.current.activity.$jazz.push(
-					ActivityItem.create({
-						completed: new Date()
-					})
-				);
-			}
-			goto('/decks');
-		}}
-		onCardComplete={(cardId) => {
-			completedCards.add(cardId);
-			if (deck.current.$isLoaded) {
-				const completedCard = deck.current.cards.find((card) => card.$jazz.id === cardId);
-				if (completedCard?.activity.$isLoaded) {
-					completedCard.activity.$jazz.push(
+	<div class="col-span-3 row-span-3" style:view-transition-name={`deck-${deck.current.$jazz.id}`}>
+		<Deck
+			class="h-full w-full"
+			deck={deck.current}
+			completedCards={[...completedCards]}
+			getViewTransitionName={(card) => `card-${card.$jazz.id}`}
+			onDeckComplete={() => {
+				if (deck.current.$isLoaded && deck.current.activity.$isLoaded) {
+					deck.current.activity.$jazz.push(
 						ActivityItem.create({
 							completed: new Date()
 						})
 					);
 				}
-			}
-		}}
-	/>
+				goto('/decks');
+			}}
+			onCardComplete={(cardId) => {
+				completedCards.add(cardId);
+				if (deck.current.$isLoaded) {
+					const completedCard = deck.current.cards.find((card) => card.$jazz.id === cardId);
+					if (completedCard?.activity.$isLoaded) {
+						completedCard.activity.$jazz.push(
+							ActivityItem.create({
+								completed: new Date()
+							})
+						);
+					}
+				}
+			}}
+		/>
+	</div>
 {/if}

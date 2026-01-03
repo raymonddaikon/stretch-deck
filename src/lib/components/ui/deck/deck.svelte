@@ -15,6 +15,8 @@
 		class?: string;
 		/** Optional function to get view-transition-name for a card */
 		getViewTransitionName?: (card: co.loaded<typeof CardSchema>) => string;
+		/** Optional key to force re-evaluation of view transition names */
+		transitionKey?: unknown;
 		/** Optional callback when a card is clicked. If provided, prevents default flip behavior. */
 		onCardClick?: (card: co.loaded<typeof CardSchema>, index: number) => void;
 		/** Optional callback when a card is scrolled through (completed). Receives the card ID. */
@@ -30,6 +32,7 @@
 		aligned = false,
 		class: className,
 		getViewTransitionName,
+		transitionKey,
 		onCardClick,
 		onCardComplete,
 		onDeckComplete
@@ -322,7 +325,7 @@
 	onclick={handleClick}
 	onkeydown={handleKeydown}
 >
-	<Snap bind:progress {length}>
+	<Snap bind:progress {length} {transitionKey}>
 		{#snippet renderCard(index)}
 			{@const { tiltX, tiltY } = getTiltForCard(index)}
 			{@const card = cards ? cards[index] : deck?.cards.$isLoaded ? deck.cards?.[index] : undefined}
@@ -338,9 +341,7 @@
 					onElementMount={(el) => setCardElement(index, el)}
 					{card}
 					{aligned}
-					viewTransitionName={card && getViewTransitionName
-						? getViewTransitionName(card)
-						: undefined}
+					viewTransitionName={getViewTransitionName?.(card)}
 				/>
 			{/if}
 		{/snippet}

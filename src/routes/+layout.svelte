@@ -6,12 +6,26 @@
 	import { type SyncConfig } from 'jazz-tools';
 	import { JazzSvelteProvider } from 'jazz-tools/svelte';
 	import { ModeWatcher } from 'mode-watcher';
+	import { onNavigate } from '$app/navigation';
 	import { PUBLIC_JAZZ_API_KEY } from '$env/static/public';
 	import { scramble } from '$lib/actions/scramble.svelte';
 	import favicon from '$lib/assets/favicon.svg';
 	import AuthProvider from '$lib/auth/auth-provider.svelte';
 	import { setLayoutContext } from '$lib/context/layout.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import { StretchDeckAccount } from '$lib/schema';
+
+	// Enable cross-document view transitions for smooth page navigation
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
 
 	// import 'jazz-tools/inspector/register-custom-element';
 
@@ -66,25 +80,25 @@
 						href="/create-deck"
 						class="pointer-events-auto z-50 flex-none text-base text-black uppercase"
 					>
-						Create Deck
+						{m.create_deck()}
 					</a>
 					<a
 						href="/create-card"
 						class="pointer-events-auto z-50 flex-none text-base text-black uppercase"
 					>
-						Create Card
+						{m.create_card()}
 					</a>
 					<a
 						href="/decks"
 						class="pointer-events-auto z-50 flex-none text-base text-black uppercase"
 					>
-						All Decks
+						{m.all_decks()}
 					</a>
 					<a
 						href="/cards"
 						class="pointer-events-auto z-50 flex-none text-base text-black uppercase"
 					>
-						All Cards
+						{m.all_cards()}
 					</a>
 				</nav>
 			</div>

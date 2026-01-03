@@ -65,7 +65,7 @@
 	emptyDescription="Try a different search term"
 	bind:scrollIndex
 	bind:totalItems
-	class="pointer-events-auto col-span-3 row-span-1 row-start-2 md:col-span-1 md:col-start-2 md:row-span-3 md:overflow-x-visible"
+	class="pointer-events-auto col-span-3 row-span-2 row-start-2 md:col-span-1 md:col-start-2 md:row-span-3 md:overflow-x-visible"
 >
 	{#snippet children({ item, highlighted })}
 		{@const tilt = getCardTilt(item.$jazz.id)}
@@ -89,6 +89,7 @@
 					shadow={true}
 					class="card-grid-card"
 					card={item}
+					viewTransitionName={`card-${item.$jazz.id}`}
 				/>
 			</button>
 		</div>

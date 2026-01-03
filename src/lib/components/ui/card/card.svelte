@@ -15,6 +15,7 @@
 		totalCards: number;
 		tiltX?: number;
 		tiltY?: number;
+		tiltRange?: number;
 		isFlipped?: boolean;
 		isActive?: boolean;
 		onElementMount?: (element: HTMLElement | undefined) => void;
@@ -49,6 +50,7 @@
 		totalCards,
 		tiltX = 0,
 		tiltY = 0,
+		tiltRange = 15,
 		isFlipped = false,
 		isActive = false,
 		onElementMount,
@@ -104,9 +106,8 @@
 
 	// Normalized pointer values for effects (0 to 1 range, with 0.5 as center)
 	// Convert from tilt degrees to normalized position
-	const TILT_RANGE = 15; // Assume tilt ranges from -15 to 15 degrees
-	let normalizedX = $derived(0.5 + springTiltY.current / (TILT_RANGE * 2)); // Y tilt controls X position
-	let normalizedY = $derived(0.5 + springTiltX.current / (TILT_RANGE * 2)); // X tilt controls Y position
+	let normalizedX = $derived(0.5 + springTiltY.current / (tiltRange * 2)); // Y tilt controls X position
+	let normalizedY = $derived(0.5 + springTiltX.current / (tiltRange * 2)); // X tilt controls Y position
 
 	// Pointer derivatives for advanced effects
 	let pointerAngle = $derived.by(() => {

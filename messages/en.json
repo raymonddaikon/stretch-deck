@@ -1,4 +1,55 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hello, {name} from en!"
+	"welcome": "Welcome",
+	"create_deck": "Create Deck",
+	"create_card": "Create Card",
+	"all_decks": "All Decks",
+	"all_cards": "All Cards",
+	"card_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} card",
+				"countPlural=other": "{count} cards"
+			}
+		}
+	],
+	"deck_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} deck",
+				"countPlural=other": "{count} decks"
+			}
+		}
+	],
+	"selected_card_count": [
+		{
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{count} card selected",
+				"countPlural=other": "{count} cards selected"
+			}
+		}
+	],
+	"edit_card": "Edit Card",
+	"edit_deck": "Edit Deck",
+	"save_card": "Save Card",
+	"save_deck": "Save Deck",
+	"card_title_placeholder": "Big Stretch",
+	"card_areas_placeholder": "Neck, Back, etc.",
+	"areas": "Areas",
+	"reps": "Reps",
+	"sets": "Sets",
+	"description": "Description",
+	"card_description_placeholder": "Additional notes on how the stretch is done",
+	"deck_description_placeholder": "What is this deck used for?",
+	"sort": "Sort Deck",
+	"deck_name_placeholder": "Deck Name",
+	"name": "Name",
+	"select_cards": "Select cards to add to your deck.",
+	"done_sorting": "Done Sorting"
 }
