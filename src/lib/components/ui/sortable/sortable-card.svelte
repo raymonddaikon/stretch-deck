@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { type UseSortableInput, useSortable } from '@dnd-kit-svelte/svelte/sortable';
 	import { co } from 'jazz-tools';
+	import { MediaQuery } from 'svelte/reactivity';
 	import { Card } from '$lib/components/ui/card';
 	import { Card as CardSchema } from '$lib/schema';
 
@@ -17,15 +18,85 @@
 	// Card should be hidden while dragging OR while the drop animation is playing
 	let isHidden = $derived((isDragging.current || isDropping.current) && !isOverlay);
 
+	// Detect mobile devices
+	const isMobile = new MediaQuery('(pointer: coarse) and (hover: none)');
+
 	// Tilt state for this card
 	let tiltX = $state(0);
 	let tiltY = $state(0);
 
-	// Track flipped state
-	let isFlipped = $state(false);
+	// Device orientation for tilt effect on mobile
+	let deviceTiltX = $state(0);
+	let deviceTiltY = $state(0);
+	let orientationPermissionGranted = $state(false);
+
+	// Request permission and set up device orientation listener
+	async function requestOrientationPermission() {
+		// Check if DeviceOrientationEvent exists and requires permission (iOS 13+)
+		if (
+			typeof DeviceOrientationEvent !== 'undefined' &&
+			typeof (DeviceOrientationEvent as any).requestPermission === 'function'
+		) {
+			try {
+				const permission = await (DeviceOrientationEvent as any).requestPermission();
+				if (permission === 'granted') {
+					orientationPermissionGranted = true;
+				}
+			} catch (e) {
+				console.error('Device orientation permission denied:', e);
+			}
+		} else {
+			// Non-iOS devices don't require permission
+			orientationPermissionGranted = true;
+		}
+	}
+
+	function handleDeviceOrientation(event: DeviceOrientationEvent) {
+		if (!isMobile.current) return;
+
+		const beta = event.beta; // Front-to-back tilt (-180 to 180)
+		const gamma = event.gamma; // Left-to-right tilt (-90 to 90)
+
+		if (beta === null || gamma === null) return;
+
+		// Normalize values to -1 to 1 range
+		// Beta: typical holding angle is around 45 degrees, so we center around that
+		// and use a range of about ±30 degrees for full tilt
+		const normalizedBeta = Math.max(-1, Math.min(1, (beta - 45) / 30));
+		// Gamma: use ±30 degrees for full tilt
+		const normalizedGamma = Math.max(-1, Math.min(1, gamma / 30));
+
+		deviceTiltX = normalizedBeta;
+		deviceTiltY = normalizedGamma;
+
+		// Update tilt values from device orientation
+		tiltX = deviceTiltX * -10;
+		tiltY = deviceTiltY * 10;
+	}
+
+	// Request permission on first interaction for iOS
+	const handleFirstInteraction = () => {
+		if (!orientationPermissionGranted) {
+			requestOrientationPermission();
+		}
+		window.removeEventListener('touchstart', handleFirstInteraction);
+	};
+
+	// Set up device orientation listener
+	$effect(() => {
+		if (!isMobile.current) return;
+
+		window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+		window.addEventListener('deviceorientation', handleDeviceOrientation);
+
+		return () => {
+			window.removeEventListener('touchstart', handleFirstInteraction);
+			window.removeEventListener('deviceorientation', handleDeviceOrientation);
+		};
+	});
 
 	function handlePointerMove(event: PointerEvent) {
-		if (isDragging.current) return;
+		if (isDragging.current || isMobile.current) return;
 
 		const target = event.currentTarget as HTMLElement;
 		const bounds = target.getBoundingClientRect();
@@ -43,13 +114,10 @@
 	}
 
 	function handlePointerLeave() {
-		tiltX = 0;
-		tiltY = 0;
-	}
-
-	function handleClick() {
-		if (!isDragging.current) {
-			isFlipped = !isFlipped;
+		// Only reset tilt on desktop (mobile uses device orientation)
+		if (!isMobile.current) {
+			tiltX = 0;
+			tiltY = 0;
 		}
 	}
 </script>
@@ -67,7 +135,6 @@
 		]}
 		onpointermove={handlePointerMove}
 		onpointerleave={handlePointerLeave}
-		onclick={handleClick}
 	>
 		<Card
 			totalCards={0}
@@ -76,7 +143,7 @@
 			direction={1}
 			{tiltX}
 			{tiltY}
-			{isFlipped}
+			isFlipped={false}
 			shadow={true}
 			class="sortable-grid-card"
 			{card}

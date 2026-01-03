@@ -40,9 +40,6 @@
 		class: className
 	}: SortDeckProps = $props();
 
-	// Track if we're currently dragging
-	let isDragging = $state(false);
-
 	// Local state for the card order - initialized from props
 	let orderedCards = $state<
 		{
@@ -60,15 +57,6 @@
 			creator: any;
 		}[]
 	>(cards.map((card) => (card.$isLoaded ? card.toJSON() : null)));
-
-	// Sync with props when they change, but only when not dragging
-	// $effect(() => {
-	// 	if (!isDragging) {
-	// 		untrack(() => {
-	// 			orderedCards = cards.toJSON();
-	// 		});
-	// 	}
-	// });
 
 	const sensors = [
 		PointerSensor.configure({
@@ -88,9 +76,9 @@
 		return newArray;
 	}
 
-	function handleDragStart(event: any, manager: any) {
-		isDragging = true;
-	}
+	// function handleDragStart(event: any, manager: any) {
+	// 	isDragging = true;
+	// }
 
 	function handleDragOver(event: any, manager: any) {
 		const { source, target } = manager.dragOperation;
@@ -116,46 +104,59 @@
 	}
 
 	function handleDragEnd(event: any, manager: any) {
-		isDragging = false;
 		// Notify parent of the final order
 		// cards.$jazz.applyDiff()
 		onOrderChange?.(orderedCards);
 	}
 </script>
 
-<DragDropProvider
-	{sensors}
-	onDragStart={handleDragStart}
-	onDragOver={handleDragOver}
-	onDragEnd={handleDragEnd}
->
+<DragDropProvider {sensors} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
 	<div
 		class={[
-			'sort-deck-container flex flex-col items-center gap-3 focus-visible:outline-0 md:overflow-x-visible',
+			'sort-deck-container flex h-full max-h-full flex-col items-center gap-3 overflow-hidden focus-visible:outline-0 md:overflow-x-visible',
 			className
 		]}
 	>
 		<div
-			class="grid-wrapper scrollbar-none h-full w-full overflow-x-auto p-2 md:min-h-0 md:overflow-x-visible! md:overflow-y-auto md:pt-4 md:pb-12"
+			class="grid-wrapper scrollbar-none h-full w-full overflow-x-auto md:min-h-0 md:overflow-x-visible! md:overflow-y-auto md:pt-34"
 		>
-			<div class="sort-deck-grid grid gap-4" style:--grid-min-size={minWidth}>
+			<div
+				class="sort-deck-grid grid w-fit gap-4 px-2.5 pt-4 pb-14 md:w-auto md:px-0 md:pb-4"
+				style:--grid-min-size={minWidth}
+			>
 				{#each orderedCards as card, index (card.$jazz.id)}
 					{@const cardObject = cards.find((c) => c.$jazz.id === card.$jazz.id)}
+					{@const viewTransitionName = getViewTransitionName
+						? getViewTransitionName(card.$jazz.id)
+						: undefined}
+					{@const zIndex = orderedCards.length - index}
 					<div
-						class="@container relative aspect-2/3 scroll-mt-14 scroll-mb-8 transition"
+						class="sort-deck-item-wrapper @container relative scroll-mt-14 scroll-mb-8 transition"
 						style="--grid-item-size: 100cqw;"
+						style:z-index={zIndex}
 					>
-						{#if cardObject?.$isLoaded}
-							<SortableCard
-								card={cardObject}
-								id={card.$jazz.id}
-								index={() => index}
-								group="deck"
-								data={{ group: 'deck' }}
-								type="card"
-								viewTransitionName={getViewTransitionName?.(card.$jazz.id)}
-							/>
-						{/if}
+						<div
+							class="sort-deck-footer absolute bottom-0 left-0 -z-100 flex w-full items-end justify-start"
+						>
+							<span
+								class="-z-100 truncate bg-foreground px-2 py-1 text-center text-sm font-medium text-black"
+							>
+								{index + 1}
+							</span>
+						</div>
+						<div class="sort-deck-card-area z-10 border-2 border-dashed pb-5.5">
+							{#if cardObject?.$isLoaded}
+								<SortableCard
+									card={cardObject}
+									id={card.$jazz.id}
+									index={() => index}
+									group="deck"
+									data={{ group: 'deck' }}
+									type="card"
+									{viewTransitionName}
+								/>
+							{/if}
+						</div>
 					</div>
 				{/each}
 			</div>
@@ -187,15 +188,34 @@
 		container-type: size;
 	}
 
+	/* Item wrapper with footer space */
+	.sort-deck-item-wrapper {
+		display: flex;
+		flex-direction: column;
+	}
+
+	/* Card area takes remaining space after footer */
+	.sort-deck-card-area {
+		position: relative;
+		flex: 1;
+		aspect-ratio: 2 / 3;
+	}
+
+	/* Footer styling similar to deck-grid */
+	.sort-deck-footer {
+		height: 2rem;
+	}
+
 	/* Mobile: horizontal scroll with exactly 2 rows */
 	.sort-deck-grid {
 		height: 100%;
 		grid-auto-flow: column;
-		/* 2 rows that split the container height evenly */
-		grid-template-rows: repeat(2, 1fr);
+		grid-template-rows: 1fr 1fr;
 		/* Column width based on row height and 2:3 aspect ratio */
-		/* Each row is 50% height, so column width = (50% height) * (2/3) */
-		grid-auto-columns: calc((50cqh - 0.5rem) * (2 / 3));
+		/* Row height = (100cqh - 1rem gap) / 2, card area excludes 2rem footer */
+		/* Card height = row height - 2rem footer, width = card height * (2/3) */
+		/*grid-auto-columns: calc(((100cqh - 1rem) / 2 - 2rem) * (2 / 3));*/
+		grid-auto-columns: calc(((100cqh - 1rem - 4.375rem) / 2) * (2 / 3));
 	}
 
 	/* md breakpoint (768px): standard responsive grid with vertical scroll */

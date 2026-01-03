@@ -131,7 +131,7 @@
 	}
 }
 
-@utility scrollbar-thin {
+/*@utility scrollbar-thin {
 	scrollbar-width: thin;
 	scrollbar-color: var(--color-foreground) transparent;
 	&::-webkit-scrollbar-thumb {
@@ -140,4 +140,28 @@
 	&::-webkit-scrollbar-track {
 		background: transparent;
 	}
+}*/
+
+/* View Transition Animations */
+/* Default fade transition for non-matched elements */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation-duration: 0.3s;
+	animation-timing-function: ease-in-out;
+}
+
+/* Card transitions - smooth movement between pages */
+::view-transition-old(card-*),
+::view-transition-new(card-*) {
+	animation-duration: 0.4s;
+	animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	/* Ensure 3D transforms are preserved during transition */
+	mix-blend-mode: normal;
+}
+
+/* Deck transitions */
+::view-transition-old(deck-*),
+::view-transition-new(deck-*) {
+	animation-duration: 0.4s;
+	animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }

@@ -3,18 +3,19 @@
 	import { createImage } from 'jazz-tools/media';
 	import { AccountCoState } from 'jazz-tools/svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import type { ZodError } from 'zod';
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import * as Field from '$lib/components/ui/field';
 	import { Input } from '$lib/components/ui/input';
 	import TagsInput from '$lib/components/ui/tags-input/tags-input.svelte';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import { ActivityFeed, Card as CardSchema, StretchCard, StretchDeckAccount } from '$lib/schema';
 	import CardEditorHeader from './card-editor-header.svelte';
 	import { schema, UNITS_OPTIONS, type Units } from './schema';
 
 	type CardEditorProps = {
-		/** Mode: 'create' for new card, 'edit' for existing card */
 		mode: 'create' | 'edit';
 		/** Initial card data (used in edit mode) */
 		initialCard?: co.loaded<typeof CardSchema>;
@@ -35,13 +36,22 @@
 	let name = $state(initialCard?.name ?? '');
 	let tags = $state<string[]>(initialCard?.areas ?? []);
 	let reps = $state(initialCard?.reps ?? 0);
-	let units = $state<Units>(initialCard?.units ?? 'reps');
+	// let units = $state<Units>(initialCard?.units ?? 'reps');
 	let sets = $state(initialCard?.sets ?? 0);
 	let description = $state(initialCard?.description ?? '');
 	let changedImageIndices = new SvelteSet<number>();
 	let headerImages = $state<(string | null)[]>([null, null, null]);
 
-	let errors = $state<Record<string, string>>({});
+	// Function reference to get final images (with dithering applied if enabled)
+	let getFinalImages: (() => Promise<(string | null)[]>) | null = $state(null);
+
+	let errors = $state<
+		| ZodError<{
+				name: string;
+				description: string;
+		  }>
+		| undefined
+	>();
 
 	function handleImagesChange(images: (string | null)[], index: number) {
 		headerImages = images;
@@ -58,8 +68,6 @@
 		const response = await fetch(dataUrl);
 		return response.blob();
 	}
-
-	$inspect(changedImageIndices);
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
@@ -78,19 +86,11 @@
 		const result = schema.safeParse(data);
 
 		if (!result.success) {
-			const newErrors: Record<string, string> = {};
-			for (const issue of result.error.errors) {
-				const path = issue.path[0] as string;
-				if (path && !newErrors[path]) {
-					newErrors[path] = issue.message;
-				}
-			}
-			errors = newErrors;
-			console.log('Validation errors:', errors);
+			errors = result.error;
 			return;
 		}
 
-		errors = {};
+		errors = undefined;
 
 		if (!me.current.$isLoaded) {
 			return;
@@ -99,8 +99,9 @@
 		const newCardOwnerGroup = co.group().create({ owner: me.current });
 
 		if (mode === 'create') {
-			// Convert all headerImages (data URLs) to ImageDefinitions
-			const validImages = headerImages.filter((img): img is string => img !== null);
+			// Get final images (with dithering applied if enabled)
+			const finalImages = getFinalImages ? await getFinalImages() : headerImages;
+			const validImages = finalImages.filter((img): img is string => img !== null);
 			const imageBlobs = await Promise.all(validImages.map((img) => dataUrlToBlob(img)));
 			const convertedImages: ImageDefinition[] = await Promise.all(
 				imageBlobs.map((blob) =>
@@ -139,8 +140,11 @@
 
 			// Only convert and update images that were changed
 			if (changedImageIndices.size > 0 && initialCard.thumbnails.$isLoaded) {
+				// Get final images (with dithering applied if enabled)
+				const finalImages = getFinalImages ? await getFinalImages() : headerImages;
+
 				for (const index of changedImageIndices) {
-					const changedImage = headerImages[index];
+					const changedImage = finalImages[index];
 					if (changedImage) {
 						const imageBlob = await dataUrlToBlob(changedImage);
 						const convertedImage = await createImage(imageBlob, {
@@ -161,6 +165,23 @@
 	}
 </script>
 
+{#snippet selectInner()}
+	<button aria-label="select units">
+		<div>
+			<selectedcontent></selectedcontent>
+		</div>
+	</button>
+	<div class="scrollable gap-1 border-2 border-border bg-background *:text-sm *:text-black!">
+		{#each UNITS_OPTIONS as option (option)}
+			{#if option === initialCard?.units}
+				<option selected value={option}>{option}</option>
+			{:else}
+				<option value={option}>{option}</option>
+			{/if}
+		{/each}
+	</div>
+{/snippet}
+
 {#snippet cardFront()}
 	<div class="card-front border-[0.5px] bg-background p-2">
 		<Field.Group
@@ -177,7 +198,7 @@
 					name="name"
 					bind:value={name}
 					class="card-title h-full flex-1 px-2 text-black uppercase select-none"
-					placeholder="Big Stretch"
+					placeholder={m.card_title_placeholder()}
 				/>
 			</Field.Field>
 			<section class="col-span-6 row-span-5 grid grid-cols-subgrid grid-rows-subgrid gap-1">
@@ -189,6 +210,7 @@
 							? initialCard.thumbnails
 							: undefined}
 						onImagesChange={handleImagesChange}
+						getImagesRef={(fn) => (getFinalImages = fn)}
 					/>
 				</div>
 				<div
@@ -201,11 +223,11 @@
 						<Field.Label
 							class="flex flex-none items-center px-2 py-2.5 text-sm font-normal text-black uppercase"
 						>
-							<span class="inline pt-px text-box-trim"> Area: </span>
+							<span class="inline pt-px text-box-trim"> {`${m.areas()}:`} </span>
 						</Field.Label>
 						<TagsInput
 							class="bg-transparent text-right text-sm"
-							placeholder="Neck, etc."
+							placeholder={tags.length < 1 ? m.card_areas_placeholder() : ''}
 							bind:value={tags}
 						/>
 						<input type="hidden" name="tagsinput" value={JSON.stringify(tags)} />
@@ -215,9 +237,9 @@
 						class="col-span-6 row-span-1 flex h-full w-full justify-between pl-2"
 					>
 						<Field.Label class="flex flex-none text-sm font-normal text-black uppercase"
-							>Reps</Field.Label
+							>{m.reps()}</Field.Label
 						>
-						<div class="flex items-center">
+						<div class="relative flex items-center">
 							<Input
 								type="number"
 								id="reps"
@@ -226,15 +248,13 @@
 								class="flex w-16 flex-none p-2 text-right text-sm font-normal text-black uppercase tabular-nums"
 								placeholder="10"
 							/>
+
 							<select
 								id="units"
 								name="units"
-								bind:value={units}
-								class="h-full border-l bg-transparent px-2 py-2 text-sm font-normal text-black uppercase"
+								class="h-full flex-none border-l bg-transparent px-2 py-1 text-sm font-normal text-black uppercase"
 							>
-								{#each UNITS_OPTIONS as option (option)}
-									<option value={option}>{option}</option>
-								{/each}
+								{@render selectInner()}
 							</select>
 						</div>
 					</Field.Field>
@@ -243,7 +263,7 @@
 						class="col-span-6 row-span-1 flex h-full w-full justify-between pl-2"
 					>
 						<Field.Label class="flex flex-none text-sm font-normal text-black uppercase"
-							>Sets</Field.Label
+							>{m.sets()}</Field.Label
 						>
 						<Input
 							type="number"
@@ -259,14 +279,14 @@
 						class="col-span-6 row-span-1 flex h-full w-full flex-col items-start gap-1 px-2 pt-2 pb-1"
 					>
 						<Field.Label class="flex-none text-sm font-normal text-black uppercase"
-							>Description</Field.Label
+							>{m.description()}</Field.Label
 						>
 						<div class="relative w-full flex-1">
 							<Textarea
 								name="description"
 								bind:value={description}
-								placeholder="Additional notes on how the stretch is done"
-								class="field-sizing-fixed h-full w-full resize-none text-sm text-black scrollbar-thin"
+								placeholder={m.card_description_placeholder()}
+								class="scrollbar-thin field-sizing-fixed h-full w-full resize-none text-sm text-black"
 							/>
 						</div>
 					</Field.Field>
@@ -276,7 +296,10 @@
 	</div>
 {/snippet}
 
-<div class="card-wrapper pointer-events-auto">
+<div
+	class="card-wrapper pointer-events-auto"
+	style:view-transition-name={initialCard ? `card-${initialCard.$jazz.id}` : undefined}
+>
 	<article class="card card-shadow">
 		<form class="card-content p-1" onsubmit={handleSubmit}>
 			{@render cardFront()}
@@ -296,12 +319,6 @@
 </div>
 
 <style>
-	.card-title {
-		flex-shrink: 0;
-		padding: 0 1ch 0 1ch;
-		font-weight: 400;
-	}
-
 	.card-wrapper {
 		margin: auto;
 		inset: 0;
@@ -355,5 +372,142 @@
 			/* Small-medium shadow */ 0 16px 8px rgba(0, 0, 0, 0.04),
 			/* Small shadow - contact shadow */ 0 6px 4px rgba(0, 0, 0, 0.04),
 			/* Smallest shadow - tight contact */ 0 2px 2px rgba(0, 0, 0, 0.02);
+	}
+
+	select {
+		/* opt into customizing select */
+		&,
+		&::picker(select) {
+			appearance: base-select;
+		}
+
+		/* removing open props normalize styles */
+		background: none;
+
+		/* enable transitions in the drop down */
+		/*&::picker(select) {
+			transition:
+				opacity 0.2s ease,
+				transform 0.2s var(--ease-out-3),
+				display 0.2s allow-discrete,
+				overlay 0.2s allow-discrete;
+		}*/
+
+		&::picker-icon {
+			display: none;
+		}
+
+		/* set the off stage styles */
+		&:not(:open)::picker(select) {
+			opacity: 0;
+			transform: scale(0.95);
+		}
+
+		/* set the on stage styles */
+		&:open::picker(select) {
+			opacity: 1;
+			transform: scale(1);
+		}
+
+		/* customize the invoking button */
+		> button {
+			&:focus-visible {
+				outline-offset: -3px;
+			}
+
+			&:has(selectedcontent) {
+				align-items: center;
+				min-inline-size: 20ch;
+				flex-direction: column;
+			}
+
+			> div {
+				inline-size: 100%;
+				display: flex;
+				justify-content: space-between;
+				gap: var(--size-3);
+			}
+
+			& svg {
+				inline-size: 2ch;
+				transition: transform 0.3s var(--ease-elastic-out-2);
+			}
+		}
+
+		&:open > button svg {
+			transform: rotate(0.5turn);
+		}
+
+		/* reset some picker styles */
+		&::picker(select) {
+			background: light-dark(white, var(--surface-2));
+			border-radius: var(--radius-2);
+			padding: 0;
+			margin-block: 5px;
+			box-shadow: var(--shadow-5);
+
+			@media (forced-colors: none) {
+				border: none;
+			}
+		}
+
+		/* customize the picker contents */
+		> div {
+			min-inline-size: calc(anchor-size(self-inline) + 20px);
+			scroll-behavior: smooth;
+
+			&.scrollable {
+				max-block-size: 20lh;
+				scrollbar-width: thin;
+			}
+
+			& hr {
+				margin-block: var(--spacing);
+			}
+
+			& label {
+				display: block;
+				position: sticky;
+				top: 0;
+				z-index: 1;
+				background: var(--surface-3);
+				font-size: var(--font-size-0);
+				color: var(--text-2);
+				font-weight: var(--font-weight-7);
+				padding-block: var(--size-1);
+				padding-inline: var(--size-3);
+			}
+
+			& option {
+				display: flex;
+				align-items: center;
+				gap: var(--spacing);
+				padding-block: var(--spacing);
+				padding-inline: var(--spacing);
+				/*font-size: var(--font-size-1);*/
+
+				cursor: pointer;
+				outline-offset: -1px;
+
+				&::checkmark {
+					/*font-weight: var(--font-weight-8);*/
+				}
+
+				&:focus-visible {
+					outline-offset: -1px;
+				}
+
+				&:is(:focus, :hover) {
+					background: oklch(from var(--link) l c h / 25%);
+					color: inherit;
+				}
+
+				&:is(:checked) {
+					background: var(--link);
+					color: var(--surface-1);
+					font-weight: var(--font-weight-8);
+				}
+			}
+		}
 	}
 </style>

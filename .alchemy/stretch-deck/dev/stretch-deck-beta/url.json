@@ -1,0 +1,23 @@
+{
+  "kind": "cloudflare::WorkerSubdomain",
+  "id": "url",
+  "fqn": "stretch-deck/dev/stretch-deck-beta/url",
+  "seq": 0,
+  "data": {},
+  "status": "created",
+  "output": {
+    "Symbol(alchemy::ResourceKind)": "cloudflare::WorkerSubdomain",
+    "Symbol(alchemy::ResourceID)": "url",
+    "Symbol(alchemy::ResourceFQN)": "stretch-deck/dev/stretch-deck-beta/url",
+    "Symbol(alchemy::ResourceScope)": {
+      "@scope": null
+    },
+    "Symbol(alchemy::ResourceSeq)": 0,
+    "url": "https://stretch-deck-stretch-deck-beta-dev.ray-dc0.workers.dev"
+  },
+  "props": {
+    "scriptName": "stretch-deck-stretch-deck-beta-dev",
+    "retain": false,
+    "dev": false
+  }
+}

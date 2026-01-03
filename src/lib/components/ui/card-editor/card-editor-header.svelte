@@ -8,7 +8,7 @@
 	import type { CropArea, DispatchEvents } from 'svelte-easy-crop';
 
 	import Cropper from 'svelte-easy-crop';
-	// import ImageDithering from '$lib/components/shaders/image-dithering.svelte';
+	import ImageDithering from '$lib/components/shaders/image-dithering.svelte';
 	import { getCroppedImg } from '$lib/components/ui/image-cropper/utils';
 	import BlockLoader from '$lib/components/ui/loader/block-loader.svelte';
 	import * as Resizable from '$lib/components/ui/resizable';
@@ -20,9 +20,16 @@
 		initialThumbnails?: co.loaded<co.List<co.Image>> | null;
 		/** Callback when images change, receives the updated images array and the index that changed */
 		onImagesChange?: (images: (string | null)[], changedIndex: number) => void;
+		/** Callback to get final images (with dithering applied if enabled) */
+		getImagesRef?: (getFn: () => Promise<(string | null)[]>) => void;
 	}
 
-	let { class: className = '', initialThumbnails, onImagesChange }: Props = $props();
+	let {
+		class: className = '',
+		initialThumbnails,
+		onImagesChange,
+		getImagesRef
+	}: Props = $props();
 
 	// Track blob URLs created from Jazz images for cleanup
 	let initialBlobUrls: string[] = [];
@@ -91,6 +98,52 @@
 	// Background removal state
 	let removingBgIndex: number | null = $state(null);
 	let bgRemovedIndices: Set<number> = $state(new Set());
+
+	// Dithering state
+	let ditheringEnabled = $state(false);
+
+	// Refs to dithering container divs to access canvases
+	let ditheringRefs: (HTMLDivElement | undefined)[] = $state([undefined, undefined, undefined]);
+
+	/** Get the final images, applying dithering if enabled */
+	async function getFinalImages(): Promise<(string | null)[]> {
+		if (!ditheringEnabled) {
+			return images;
+		}
+
+		const finalImages: (string | null)[] = [];
+
+		for (let i = 0; i < 3; i++) {
+			const image = images[i];
+			if (!image) {
+				finalImages.push(null);
+				continue;
+			}
+
+			const containerDiv = ditheringRefs[i];
+			if (!containerDiv) {
+				finalImages.push(image);
+				continue;
+			}
+
+			const canvas = containerDiv.querySelector('canvas');
+			if (!canvas) {
+				finalImages.push(image);
+				continue;
+			}
+
+			// Convert canvas to data URL
+			const dataUrl = canvas.toDataURL('image/png');
+			finalImages.push(dataUrl);
+		}
+
+		return finalImages;
+	}
+
+	// Expose the getFinalImages function to parent
+	$effect(() => {
+		getImagesRef?.(getFinalImages);
+	});
 
 	// Track container dimensions for proper image sizing
 	let containerRef: HTMLDivElement | undefined = $state();
@@ -1228,20 +1281,25 @@
 				{:else if images[0]}
 					<!-- Display cropped image -->
 					<div class="absolute inset-y-0 left-0 h-full" style="width: {containerWidth}px;">
-						<img class="h-full w-full object-cover" src={images[0]} alt="Position 1" />
-						<!-- <ImageDithering
-							class="h-full w-full"
-							image={images[0]}
-							colorBack="#000c38"
-							colorFront="#94ffaf"
-							colorHighlight="#eaff94"
-							type="8x8"
-							size={2}
-							colorSteps={2}
-							originalColors={true}
-							fit="cover"
-							webGlContextAttributes={{ alpha: true, premultipliedAlpha: false }}
-						/> -->
+						{#if ditheringEnabled}
+							<div bind:this={ditheringRefs[0]} class="h-full w-full">
+								<ImageDithering
+									class="h-full w-full"
+									image={images[0]}
+									colorBack="#000c38"
+									colorFront="#94ffaf"
+									colorHighlight="#eaff94"
+									type="8x8"
+									size={2}
+									colorSteps={2}
+									originalColors={true}
+									fit="cover"
+									webGlContextAttributes={{ alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true }}
+								/>
+							</div>
+						{:else}
+							<img class="h-full w-full object-cover" src={images[0]} alt="Position 1" />
+						{/if}
 					</div>
 					<div class="absolute top-1 left-1 z-10 flex flex-col gap-1">
 						<button
@@ -1300,20 +1358,25 @@
 						class="absolute inset-y-0 h-full"
 						style="width: {containerWidth}px; left: -{paneOffsetsPx[1]}px;"
 					>
-						<img class="h-full w-full object-cover" src={images[1]} alt="Position 2" />
-						<!-- <ImageDithering
-							class="h-full w-full"
-							image={images[1]}
-							colorBack="#000c38"
-							colorFront="#94ffaf"
-							colorHighlight="#eaff94"
-							type="8x8"
-							size={2}
-							colorSteps={2}
-							originalColors={true}
-							fit="cover"
-							webGlContextAttributes={{ alpha: true, premultipliedAlpha: false }}
-						/> -->
+						{#if ditheringEnabled}
+							<div bind:this={ditheringRefs[1]} class="h-full w-full">
+								<ImageDithering
+									class="h-full w-full"
+									image={images[1]}
+									colorBack="#000c38"
+									colorFront="#94ffaf"
+									colorHighlight="#eaff94"
+									type="8x8"
+									size={2}
+									colorSteps={2}
+									originalColors={true}
+									fit="cover"
+									webGlContextAttributes={{ alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true }}
+								/>
+							</div>
+						{:else}
+							<img class="h-full w-full object-cover" src={images[1]} alt="Position 2" />
+						{/if}
 					</div>
 					<div class="absolute top-1 left-1 z-10 flex flex-col gap-1">
 						<button
@@ -1372,20 +1435,25 @@
 						class="absolute inset-y-0 h-full"
 						style="width: {containerWidth}px; left: -{paneOffsetsPx[2]}px;"
 					>
-						<img class="h-full w-full object-cover" src={images[2]} alt="Position 3" />
-						<!-- <ImageDithering
-							class="h-full w-full"
-							image={images[2]}
-							colorBack="#000c38"
-							colorFront="#94ffaf"
-							colorHighlight="#eaff94"
-							type="8x8"
-							size={2}
-							colorSteps={2}
-							originalColors={true}
-							fit="cover"
-							webGlContextAttributes={{ alpha: true, premultipliedAlpha: false }}
-						/> -->
+						{#if ditheringEnabled}
+							<div bind:this={ditheringRefs[2]} class="h-full w-full">
+								<ImageDithering
+									class="h-full w-full"
+									image={images[2]}
+									colorBack="#000c38"
+									colorFront="#94ffaf"
+									colorHighlight="#eaff94"
+									type="8x8"
+									size={2}
+									colorSteps={2}
+									originalColors={true}
+									fit="cover"
+									webGlContextAttributes={{ alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true }}
+								/>
+							</div>
+						{:else}
+							<img class="h-full w-full object-cover" src={images[2]} alt="Position 3" />
+						{/if}
 					</div>
 					<div class="absolute top-1 right-1 z-10 flex flex-col gap-1">
 						<button
@@ -1431,18 +1499,29 @@
 		</Resizable.Pane>
 	</Resizable.PaneGroup>
 
-	<!-- Remove All Backgrounds button (only show if any image is uploaded) -->
+	<!-- Image processing buttons (only show if any image is uploaded) -->
 	{#if hasAnyImage && croppingIndex === null}
-		{#if indicesToProcess.length > 0}
+		<div class="absolute right-2 bottom-2 z-60 flex gap-2">
 			<button
 				type="button"
-				class="absolute right-2 bottom-2 z-60 bg-black/50 px-2 py-1 text-xs text-white hover:bg-black/70 disabled:opacity-50"
-				onclick={removeAllBackgrounds}
-				disabled={isRemovingBackground}
+				class="bg-black/50 px-2 py-1 text-xs text-white hover:bg-black/70 {ditheringEnabled
+					? 'ring-1 ring-white'
+					: ''}"
+				onclick={() => (ditheringEnabled = !ditheringEnabled)}
 			>
-				{isRemovingBackground ? 'Removing...' : `Remove BG [${indicesToProcess.join(',')}]`}
+				{ditheringEnabled ? 'Dither: On' : 'Dither: Off'}
 			</button>
-		{/if}
+			{#if indicesToProcess.length > 0}
+				<button
+					type="button"
+					class="bg-black/50 px-2 py-1 text-xs text-white hover:bg-black/70 disabled:opacity-50"
+					onclick={removeAllBackgrounds}
+					disabled={isRemovingBackground}
+				>
+					{isRemovingBackground ? 'Removing...' : `Remove BG [${indicesToProcess.join(',')}]`}
+				</button>
+			{/if}
+		</div>
 	{/if}
 </div>
 

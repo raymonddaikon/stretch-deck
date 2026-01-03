@@ -233,13 +233,12 @@
 	></canvas>
 	<canvas
 		bind:this={cvsBarrier}
-		class="pixelated pointer-events-none absolute inset-0 z-20 block h-full w-full"
+		class="pixelated pointer-events-none absolute inset-0 z-20 block h-full w-full object-cover"
 	></canvas>
 </div>
 
 <style>
 	.pixelated {
 		image-rendering: pixelated;
-		object-fit: cover;
 	}
 </style>

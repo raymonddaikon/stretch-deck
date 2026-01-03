@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { co } from 'jazz-tools';
 	import { AccountCoState } from 'jazz-tools/svelte';
+	import { watch } from 'runed';
 	import { flushSync } from 'svelte';
 	import { MediaQuery, SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import type { ZodError } from 'zod';
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
@@ -12,9 +14,10 @@
 	import { Input } from '$lib/components/ui/input';
 	import SortDeck from '$lib/components/ui/sortable/sort-deck.svelte';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { getLayoutContext } from '$lib/context/layout.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import {
 		ActivityFeed,
-		ActivityItem,
 		Card as CardSchema,
 		Deck as DeckSchema,
 		StretchDeckAccount
@@ -29,9 +32,11 @@
 		mode: 'create' | 'edit';
 		/** Initial deck data (used in edit mode) */
 		initialDeck?: co.loaded<typeof DeckSchema>;
+		/** View transition name for cross-document transitions */
+		viewTransitionName?: string;
 	};
 
-	let { cards, initialDeck, mode }: DeckEditorProps = $props();
+	let { cards, initialDeck, mode, viewTransitionName }: DeckEditorProps = $props();
 
 	const me = new AccountCoState(StretchDeckAccount, {
 		resolve: {
@@ -48,9 +53,15 @@
 	let deckDescription = $state(initialDeck?.description ?? '');
 
 	// Form validation errors
-	let errors = $state<Record<string, string>>({});
+	let errors = $state<
+		| ZodError<{
+				name: string;
+				description: string;
+		  }>
+		| undefined
+	>();
 
-	const buttonLabel = $derived(mode === 'create' ? 'Create Deck' : 'Save Deck');
+	const buttonLabel = $derived(mode === 'create' ? m.create_deck() : m.save_deck());
 
 	// Check if form is valid for enabling submit button
 	const isFormValid = $derived(deckName.trim().length > 0);
@@ -75,29 +86,71 @@
 	// Track which card is currently transitioning
 	let transitioningCardId = $state<string | null>(null);
 
-	// Reorder dialog state
-	let reorderDialogElement = $state<HTMLDialogElement | null>(null);
-	let isReorderDialogOpen = $state(false);
+	// 'select' for choosing cards, 'sort' for reordering
+	let editorMode = $state<'select' | 'sort'>('select');
+	let isModeTransitioning = $state(false);
+	const layout = getLayoutContext();
+	watch(
+		() => editorMode,
+		() => {
+			if (editorMode === 'select') {
+				layout.title = initialDeck ? m.edit_deck() : m.create_deck();
+				layout.subtitle = initialDeck ? (initialDeck.name ?? '') : '';
+			} else {
+				layout.title = m.sort();
+			}
+		}
+	);
 
-	function openReorderDialog() {
-		isReorderDialogOpen = true;
-		reorderDialogElement?.showModal();
+	function switchToSortMode() {
+		if (selectedCards.length === 0) return;
+
+		if (document.startViewTransition) {
+			isModeTransitioning = true;
+			const transition = document.startViewTransition(() => {
+				flushSync(() => {
+					editorMode = 'sort';
+				});
+			});
+			transition.finished.then(() => {
+				isModeTransitioning = false;
+			});
+		} else {
+			editorMode = 'sort';
+		}
 	}
 
-	function closeReorderDialog() {
-		isReorderDialogOpen = false;
-		reorderDialogElement?.close();
+	function switchToSelectMode() {
+		if (document.startViewTransition) {
+			isModeTransitioning = true;
+
+			const transition = document.startViewTransition(() => {
+				flushSync(() => {
+					editorMode = 'select';
+				});
+			});
+
+			transition.finished
+				.then(() => {
+					isModeTransitioning = false;
+				})
+				.catch(() => {
+					isModeTransitioning = false;
+				});
+		} else {
+			editorMode = 'select';
+		}
 	}
 
-	function handleReorderDialogClose() {
-		// Handle native dialog close (e.g., Escape key, backdrop click via closedby="any")
-		isReorderDialogOpen = false;
-	}
-
-	// View transition name for cards in the reorder dialog (SortDeck)
-	// No view transitions needed - just open/close the dialog normally
-	function getReorderCardTransitionName(_card: string): string {
-		return 'none';
+	// View transition name for cards in the SortDeck
+	// Sort grid cards get the name when in sort mode (after flushSync for opening, before for closing)
+	function getSortCardTransitionName(cardId: string): string {
+		// During mode transitions (select <-> sort), use sort-card-* names
+		if (isModeTransitioning && editorMode === 'sort') {
+			return `sort-card-${cardId}`;
+		}
+		// For cross-document transitions, always use card-* names to match other pages
+		return `card-${cardId}`;
 	}
 
 	function handleOrderChange(
@@ -132,6 +185,11 @@
 			transitioningCardId = cardId;
 			transitionDirection = wasSelected ? 'to-grid' : 'to-deck';
 
+			// Inject a dynamic style to ensure the transitioning card is on top during view transition
+			const style = document.createElement('style');
+			style.textContent = `::view-transition-group(card-${cardId}) { z-index: 100; }`;
+			document.head.appendChild(style);
+
 			const transition = document.startViewTransition(() => {
 				flushSync(() => {
 					if (wasSelected) {
@@ -146,6 +204,8 @@
 			transition.finished.then(() => {
 				transitioningCardId = null;
 				transitionDirection = null;
+				// Clean up the dynamic style
+				style.remove();
 			});
 		} else {
 			// Fallback for browsers without view transition support
@@ -197,18 +257,11 @@
 		const result = schema.safeParse(data);
 
 		if (!result.success) {
-			const newErrors: Record<string, string> = {};
-			for (const issue of result.error.errors) {
-				const path = issue.path[0] as string;
-				if (path && !newErrors[path]) {
-					newErrors[path] = issue.message;
-				}
-			}
-			errors = newErrors;
+			errors = result.error;
 			return;
 		}
 
-		errors = {};
+		errors = undefined;
 		if (!me.current.$isLoaded) {
 			return;
 		}
@@ -268,16 +321,60 @@
 	}
 
 	function getDeckCardTransitionName(card: co.loaded<typeof CardSchema>): string {
-		// For grid-to-deck transitions only
-		if (transitioningCardId === card.$jazz.id) {
-			return `card-${card.$jazz.id}`;
+		// For deck-to-sort-grid transitions
+		// Deck cards get the name when in select mode (before flushSync for opening, after for closing)
+		if (isModeTransitioning && editorMode === 'select') {
+			return `sort-card-${card.$jazz.id}`;
 		}
-		return 'none';
+		// For grid-to-deck transitions and cross-document transitions
+		// Always apply view-transition-name for selected cards in deck preview
+		return `card-${card.$jazz.id}`;
+	}
+
+	// Derived map of deck card transition names - this creates a reactive dependency
+	const deckCardTransitionNames = $derived(
+		new Map(
+			selectedCards.map((card) => [
+				card.$jazz.id,
+				card.$isLoaded ? getDeckCardTransitionName(card) : undefined
+			])
+		)
+	);
+
+	// TODO: Look into why we need to recreate the maps instead of using SvelteMap
+	// const deckCardTransitionNames = new SvelteMap<string, string>();
+	// const sortCardTransitionNames = new SvelteMap<string, string>();
+	// watch(
+	// 	() => selectedCards,
+	// 	() => {
+	// 		selectedCards.forEach((card) => {
+	// 			if (card.$isLoaded) {
+	// 				deckCardTransitionNames.set(card.$jazz.id, getDeckCardTransitionName(card));
+	// 				sortCardTransitionNames.set(card.$jazz.id, getSortCardTransitionName(card.$jazz.id));
+	// 			}
+	// 		});
+	// 	}
+	// );
+
+	// Function that reads from the reactive map
+	function getDeckCardTransitionNameFromMap(card: co.loaded<typeof CardSchema>): string {
+		return deckCardTransitionNames.get(card.$jazz.id) ?? 'none';
+	}
+
+	// Derived map of sort card transition names - this creates a reactive dependency
+	const sortCardTransitionNames = $derived(
+		new Map(selectedCards.map((card) => [card.$jazz.id, getSortCardTransitionName(card.$jazz.id)]))
+	);
+
+	// Function that reads from the reactive map
+	function getSortCardTransitionNameFromMap(cardId: string): string {
+		return sortCardTransitionNames.get(cardId) ?? 'none';
 	}
 </script>
 
 <div
-	class="deck-editor-container pointer-events-auto col-span-3 row-span-3 grid grid-cols-1 grid-rows-[220px_1fr_30px] gap-1 overflow-visible scrollbar-thin md:grid-cols-[150px_1fr_300px]"
+	class="deck-editor-container scrollbar-thin pointer-events-auto col-span-3 row-span-3 grid grid-cols-1 grid-rows-[220px_1fr] overflow-visible md:grid-cols-[150px_1fr_300px]"
+	style:view-transition-name={viewTransitionName}
 >
 	<!-- Deck preview area - top right on small screens (row 1), right column on md+ -->
 	<div
@@ -290,27 +387,40 @@
 			<div
 				class="deck-preview pointer-events-none relative flex h-full w-full items-center justify-center overflow-visible rounded-lg border-2 border-dashed"
 			>
-				{#if selectedCards.length > 0}
+				{#if editorMode === 'sort'}
+					<!-- Sort mode: show empty deck with Done Sorting button -->
+					<div class="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
+						<button
+							class="pointer-events-auto h-full w-full cursor-pointer border-border text-black hover:border-2"
+							onclick={switchToSelectMode}
+						>
+							{m.done_sorting()}
+						</button>
+					</div>
+				{:else if selectedCards.length > 0}
 					<div
 						class="deck-preview-item pointer-events-auto relative h-full w-full overflow-visible"
+						class:transitioning={isModeTransitioning}
 					>
 						<Deck
 							aligned
 							cards={selectedCards as any as co.loaded<co.List<typeof CardSchema>>}
-							getViewTransitionName={getDeckCardTransitionName}
-							onCardClick={() => openReorderDialog()}
+							getViewTransitionName={getDeckCardTransitionNameFromMap}
+							transitionKey={deckCardTransitionNames}
+							onCardClick={switchToSortMode}
 							class="deck-preview-deck pointer-events-auto z-100"
 						/>
 					</div>
 				{:else}
 					<div class="flex h-full w-full flex-col items-center justify-center text-center">
-						<span class="text-sm text-gray-500">Select cards to add to your deck</span>
-						<!-- <span class="text-xs text-gray-400">0 cards selected</span> -->
+						<span class="text-sm text-gray-500">{m.select_cards()}</span>
 					</div>
 				{/if}
 			</div>
 			<div class="mt-2 hidden flex-col items-center gap-2 text-center md:flex">
-				<span class="text-sm text-gray-600">{selectedCards.length} cards selected</span>
+				<span class="text-sm text-gray-600"
+					>{m.selected_card_count({ count: selectedCards.length })}</span
+				>
 			</div>
 			<Button type="submit" class="flex w-full md:hidden" disabled={!isFormValid}>
 				{buttonLabel}
@@ -324,37 +434,37 @@
 			<Field.Group
 				class="flex max-h-full w-full flex-row gap-1 pt-1.5 pr-1 md:flex-col md:gap-4 md:pt-0 md:pr-0"
 			>
-				<Field.Field class="flex min-w-0 flex-1 gap-1" data-invalid={!!errors.name}>
+				<Field.Field class="flex min-w-0 flex-1 gap-1" data-invalid={!!errors}>
 					<Field.Label
 						class="bg-foreground px-0.5 text-sm leading-snug font-normal text-black uppercase"
-						>Name</Field.Label
+						>{m.name()}</Field.Label
 					>
 					<Input
 						id="deck-name"
 						name="name"
 						type="text"
-						placeholder="Deck name"
+						placeholder={m.deck_name_placeholder()}
 						bind:value={deckName}
 						class="text-base text-black md:text-xl"
 					/>
-					{#if errors.name}
+					{#if errors}
 						<Field.Error>{errors.name}</Field.Error>
 					{/if}
 				</Field.Field>
-				<Field.Field class="relative flex min-w-0 flex-1 gap-1" data-invalid={!!errors.description}>
+				<Field.Field class="relative flex min-w-0 flex-1 gap-1" data-invalid={!!errors?.message}>
 					<Field.Label
 						class="bg-foreground px-0.5 text-sm leading-snug font-normal text-black uppercase"
-						>Description</Field.Label
+						>{m.description()}</Field.Label
 					>
 					<Textarea
 						id="deck-description"
 						name="description"
-						placeholder="Deck description"
+						placeholder={m.deck_description_placeholder()}
 						bind:value={deckDescription}
 						class="max-h-full min-h-20 max-w-full resize-none overflow-y-auto pt-1 text-sm text-black md:text-base"
 					/>
-					{#if errors.description}
-						<Field.Error>{errors.description}</Field.Error>
+					{#if errors}
+						<Field.Error>{errors?.message}</Field.Error>
 					{/if}
 				</Field.Field>
 			</Field.Group>
@@ -364,115 +474,94 @@
 		</form>
 	</div>
 
-	<!-- Card grid area - full width row 2 on small screens, columns 1-2 rows 1-3 on md+ -->
-	<ItemGrid
-		items={cards}
-		searchProperty="name"
-		searchPlaceholder="Search cards..."
-		emptyTitle="No cards found"
-		onSelect={(item) => {
-			handleCardClick(item.$jazz.id);
-		}}
-		emptyDescription="Try a different search term"
-		minWidth={gridMinWidth}
-		class="z-0 col-span-1 row-span-1 row-start-2 md:col-start-2 md:row-span-3 md:row-start-1 md:overflow-x-visible"
+	<!-- Grid area - full width row 2 on small screens, columns 1-2 rows 1-3 on md+ -->
+	<!-- Shows either card selection grid or sort grid based on editor mode -->
+	<div
+		class="grid-area z-0 col-span-1 row-span-1 row-start-2 overflow-visible md:col-start-2 md:row-span-3 md:row-start-1"
+		data-mode={editorMode}
 	>
-		{#snippet children({ item, highlighted })}
-			{@const cardId = item.$jazz.id}
-			{@const tilt = getCardTilt(cardId)}
-			{@const cardIsSelected = isSelected(cardId)}
-			<div class="flex h-full w-full items-center justify-center">
-				<button
-					class="card-grid-item relative h-full w-full overflow-visible rounded-md transition-all focus-visible:outline-none!"
-					class:ring-2={highlighted}
-					class:ring-accent-500={highlighted}
-					onpointermove={(e) => handleCardPointerMove(cardId, e)}
-					onpointerleave={() => handleCardPointerLeave(cardId)}
-				>
-					{#if cardIsSelected}
-						<!-- Empty placeholder for selected cards - no transition name here -->
-						<div
-							class="card-placeholder absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed"
-						>
-							<!-- <span class="text-xs text-gray-400">In deck</span> -->
-						</div>
-					{:else}
-						<!-- Show the actual card - has transition name only when card is visible -->
-						<div
-							class="card-wrapper h-full w-full"
-							style:view-transition-name={transitioningCardId === cardId
-								? `card-${cardId}`
-								: 'none'}
-						>
-							<Card
-								totalCards={0}
-								index={0}
-								progress={0}
-								direction={1}
-								tiltX={tilt.tiltX}
-								tiltY={tilt.tiltY}
-								isFlipped={flippedCards.has(cardId)}
-								shadow={true}
-								class="card-grid-card"
-								card={item}
-							/>
-						</div>
-					{/if}
-				</button>
-			</div>
-		{/snippet}
-		{#snippet footer({ item, highlighted })}
-			<div
-				data-selected={isSelected(item.$jazz.id)}
-				class={cn(
-					'deck-name-area transition-300 absolute bottom-0 left-0 z-100 flex w-full items-end justify-start opacity-0 data-[selected=true]:opacity-100'
-				)}
+		{#if editorMode === 'select'}
+			<ItemGrid
+				items={cards}
+				searchProperty="name"
+				searchPlaceholder="Search cards..."
+				emptyTitle="No cards found"
+				onSelect={(item) => {
+					handleCardClick(item.$jazz.id);
+				}}
+				emptyDescription="Try a different search term"
+				minWidth={gridMinWidth}
+				class="h-full w-full md:overflow-x-visible"
 			>
-				<span
-					class="truncate bg-foreground px-1 py-1 text-center text-sm font-medium text-black md:text-base"
-				>
-					{item.name}
-				</span>
-			</div>
-		{/snippet}
-	</ItemGrid>
-</div>
-
-<!-- Reorder cards modal -->
-<dialog
-	bind:this={reorderDialogElement}
-	class="reorder-modal"
-	onclose={handleReorderDialogClose}
-	closedby="any"
->
-	<div class="reorder-modal-content relative bg-background">
-		<div class="grid-bg"></div>
-		<div class="reorder-modal-header z-10">
-			<h2 class="text-lg font-semibold text-black">Reorder Cards</h2>
-			<p class="text-sm text-gray-500">Drag cards to reorder them in your deck</p>
-		</div>
-		<div class="reorder-modal-body">
-			{#if isReorderDialogOpen}
+				{#snippet children({ item, highlighted })}
+					{@const cardId = item.$jazz.id}
+					{@const tilt = getCardTilt(cardId)}
+					{@const cardIsSelected = isSelected(cardId)}
+					<div class="flex h-full w-full items-center justify-center">
+						<button
+							class="card-grid-item relative h-full w-full overflow-visible rounded-md transition-all focus-visible:outline-none!"
+							class:ring-2={highlighted}
+							class:ring-accent-500={highlighted}
+							onpointermove={(e) => handleCardPointerMove(cardId, e)}
+							onpointerleave={() => handleCardPointerLeave(cardId)}
+						>
+							{#if cardIsSelected}
+								<!-- Empty placeholder for selected cards -->
+								<div
+									class="card-placeholder absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed"
+								></div>
+							{:else}
+								<!-- Show the actual card - always has transition name for cross-document transitions -->
+								<div
+									class="card-wrapper h-full w-full"
+									style:view-transition-name={`card-${cardId}`}
+								>
+									<Card
+										totalCards={0}
+										index={0}
+										progress={0}
+										direction={1}
+										tiltX={tilt.tiltX}
+										tiltY={tilt.tiltY}
+										isFlipped={flippedCards.has(cardId)}
+										shadow={true}
+										class="card-grid-card"
+										card={item}
+									/>
+								</div>
+							{/if}
+						</button>
+					</div>
+				{/snippet}
+				{#snippet footer({ item, highlighted })}
+					<div
+						data-selected={isSelected(item.$jazz.id)}
+						class={cn(
+							'deck-name-area transition-300 absolute bottom-0 left-0 z-100 flex w-full items-end justify-start opacity-0 data-[selected=true]:opacity-100'
+						)}
+					>
+						<span
+							class="truncate bg-foreground px-1 py-1 text-center text-sm font-medium text-black md:text-base"
+						>
+							{item.name}
+						</span>
+					</div>
+				{/snippet}
+			</ItemGrid>
+		{/if}
+		{#if editorMode === 'sort'}
+			<div class="sort-grid-container h-full w-full">
 				<SortDeck
 					cards={selectedCards as co.loaded<typeof CardSchema>[]}
 					onOrderChange={handleOrderChange}
-					getViewTransitionName={getReorderCardTransitionName}
+					getViewTransitionName={getSortCardTransitionNameFromMap}
 					minWidth={gridMinWidth}
 					class="pointer-events-auto z-100 h-full w-full"
 				/>
-			{/if}
-		</div>
-		<div class="reorder-modal-footer">
-			<button
-				type="button"
-				class="z-10 rounded bg-gray-900 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-800"
-				onclick={closeReorderDialog}
-			>
-				Done
-			</button>
-		</div>
+			</div>
+		{/if}
 	</div>
-</dialog>
+</div>
 
 <style>
 	.deck-preview-area {
@@ -485,6 +574,15 @@
 
 	.deck-preview-item {
 		container-type: size;
+	}
+
+	/* Disable containment and filters during reorder transitions to allow view transitions to work */
+	.deck-preview-item.transitioning {
+		container-type: normal;
+	}
+
+	.deck-preview-item.transitioning :global(.deck-container) {
+		filter: none;
 	}
 
 	.deck-preview-item :global(.deck-preview-deck) {
@@ -536,73 +634,28 @@
 		animation-timing-function: ease-in-out;
 	}
 
-	/* Reorder modal styles */
-	.reorder-modal {
-		position: fixed;
-		inset: 0;
-		width: 100vw;
-		height: 100vh;
-		max-width: 100vw;
-		max-height: 100vh;
-		margin: 0;
-		padding: 0;
-		background: transparent;
+	/* View transition animations for sort mode cards */
+	:global(::view-transition-old(sort-card-*)),
+	:global(::view-transition-new(sort-card-*)) {
+		animation-duration: 0.4s;
+		animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	/* Grid area container */
+	.grid-area {
+		position: relative;
 		overflow: hidden;
 	}
 
-	.reorder-modal[open] {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.reorder-modal::backdrop {
-		background: rgba(0, 0, 0, 0.85);
-		backdrop-filter: blur(4px);
-	}
-
-	.reorder-modal-content {
+	/* Sort grid container */
+	.sort-grid-container {
 		display: flex;
 		flex-direction: column;
-		width: min(90vw, 1200px);
-		height: min(90vh, 800px);
+		height: 100%;
 		overflow: hidden;
 	}
 
-	.reorder-modal-header {
-		padding: 1rem 1.5rem;
+	.sort-grid-header {
 		flex-shrink: 0;
-	}
-
-	.reorder-modal-body {
-		flex: 1;
-		overflow: auto;
-		padding: 1rem;
-	}
-
-	.reorder-modal-footer {
-		padding: 1rem 1.5rem;
-		border-top: 1px solid #e5e7eb;
-		display: flex;
-		justify-content: flex-end;
-		flex-shrink: 0;
-	}
-
-	.grid-bg {
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		pointer-events: none;
-		background-image:
-			repeating-linear-gradient(
-				oklch(from #0047ff 0.9 calc(c * 0.2) h) 0 1px,
-				transparent 1px 100%
-			),
-			repeating-linear-gradient(
-				90deg,
-				oklch(from #0047ff 0.9 calc(c * 0.2) h) 0 1px,
-				transparent 1px 100%
-			);
-		background-size: round(nearest, var(--grid-x), 1px) round(nearest, var(--grid-y), 1px);
 	}
 </style>

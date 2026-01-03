@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { CardEditor } from '$lib/components/ui/card-editor';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import { Card } from '$lib/schema';
 
 	// Load the card to edit
@@ -16,7 +17,7 @@
 	const layout = getLayoutContext();
 
 	$effect(() => {
-		layout.title = 'Edit Card';
+		layout.title = m.edit_card();
 		layout.subtitle = card.current?.$isLoaded ? (card.current.name ?? '') : '';
 	});
 </script>

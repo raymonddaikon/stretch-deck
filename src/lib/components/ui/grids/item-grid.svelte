@@ -154,7 +154,7 @@
 
 <div
 	class={cn(
-		'flex flex-col items-center gap-3 focus-visible:outline-0 md:overflow-x-visible',
+		'flex scrollbar-none! flex-col items-center gap-3 overflow-y-visible focus-visible:outline-0 md:overflow-x-visible md:overflow-y-auto',
 		className
 	)}
 	{...spatialMenu.root}
@@ -172,9 +172,12 @@
 		<div
 			bind:this={gridWrapper}
 			onscroll={updateScrollIndex}
-			class="grid-wrapper scrollbar-none h-full w-full overflow-x-auto p-2 md:min-h-0 md:overflow-x-visible! md:overflow-y-auto md:pt-34 md:pb-12"
+			class="grid-wrapper scrollbar-none! min-h-full w-full overflow-x-auto overflow-y-visible! md:min-h-0 md:overflow-x-visible! md:overflow-y-auto md:pt-34 md:pb-12"
 		>
-			<div class="item-grid grid gap-4" style:--grid-min-size={minWidth}>
+			<div
+				class="item-grid relative grid w-fit items-center gap-4 px-2.5 pt-4 pb-14 md:w-auto md:px-2 md:pb-4"
+				style:--grid-min-size={minWidth}
+			>
 				{#each filtered as gridItem (gridItem.$jazz.id)}
 					{@const item = spatialMenu.getItem(gridItem, {
 						onSelect: () => toggle(selected, gridItem.$jazz.id)
@@ -223,11 +226,9 @@
 	.item-grid {
 		height: 100%;
 		grid-auto-flow: column;
-		/* 2 rows that split the container height evenly */
-		grid-template-rows: repeat(2, 1fr);
-		/* Column width based on row height and 2:3 aspect ratio */
-		/* Each row is 50% height, so column width = (50% height) * (2/3) */
-		grid-auto-columns: calc((50cqh - 0.5rem) * (2 / 3));
+		grid-template-rows: 1fr 1fr;
+		/*Container height minus gap (1rem) minus padding (4.375rem) */
+		grid-auto-columns: calc(((100cqh - 1rem - 4.375rem) / 2) * (2 / 3));
 	}
 
 	/* md breakpoint (768px): standard responsive grid with vertical scroll */
