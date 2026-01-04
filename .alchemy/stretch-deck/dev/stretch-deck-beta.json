@@ -4,7 +4,7 @@
   "fqn": "stretch-deck/dev/stretch-deck-beta",
   "seq": 1,
   "data": {},
-  "status": "created",
+  "status": "updated",
   "output": {
     "Symbol(alchemy::ResourceKind)": "cloudflare::Worker",
     "Symbol(alchemy::ResourceID)": "stretch-deck-beta",
@@ -47,7 +47,7 @@
       "@date": "2026-01-01T11:32:01.666Z"
     },
     "updatedAt": {
-      "@date": "2026-01-01T11:32:01.666Z"
+      "@date": "2026-01-03T08:31:59.946Z"
     },
     "url": "https://stretch-deck-stretch-deck-beta-dev.ray-dc0.workers.dev"
   },

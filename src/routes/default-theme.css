@@ -144,7 +144,7 @@
 	--text-4xl--line-height: 1;
 	--text-4xl--letter-spacing: -5px;
 	/* 121px */
-	--text-5xl: round(nearest, 7.33rem, 1px);
+	--text-5xl: round(nearest, 7.25rem, 1px);
 	--text-5xl--line-height: 1;
 	--text-5xl--letter-spacing: -11px;
 
@@ -293,19 +293,19 @@
 
 	a {
 		/*background: var(--theme-border-subdued);*/
-		background: var(--color-border);
+		/*background: var(--color-border);*/
 		/*color: var(--theme-text);*/
 
 		&:hover {
 			/*background: var(--theme-focused-foreground);*/
-			background: var(--color-card-foreground);
+			/*background: var(--color-card-foreground);*/
 			color: var(--color-foreground);
 			/*color: var(--theme-text);*/
 		}
 
 		&:focus {
 			/*background: var(--theme-focused-foreground);*/
-			background: var(--color-card-foreground);
+			/*background: var(--color-card-foreground);*/
 			/*color: var(--theme-text);*/
 			color: var(--color-foreground);
 			outline: 0;

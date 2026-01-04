@@ -6,7 +6,6 @@
 	import { MediaQuery, SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import type { ZodError } from 'zod';
 	import { goto } from '$app/navigation';
-	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import Deck from '$lib/components/ui/deck/deck.svelte';
 	import * as Field from '$lib/components/ui/field';
@@ -62,9 +61,6 @@
 	>();
 
 	const buttonLabel = $derived(mode === 'create' ? m.create_deck() : m.save_deck());
-
-	// Check if form is valid for enabling submit button
-	const isFormValid = $derived(deckName.trim().length > 0);
 
 	// Track selected cards for the deck (using array to preserve order)
 	// Initialize from initialDeck if provided
@@ -258,6 +254,7 @@
 
 		if (!result.success) {
 			errors = result.error;
+			console.log(errors);
 			return;
 		}
 
@@ -301,24 +298,6 @@
 
 	// Track the direction of the transition: 'to-deck' or 'to-grid'
 	let transitionDirection = $state<'to-deck' | 'to-grid' | null>(null);
-
-	function getGridTransitionName(cardId: string, isPlaceholder: boolean): string {
-		if (transitioningCardId !== cardId) return 'none';
-
-		// The view transition captures old state, then new state.
-		// We need the transition name on:
-		// - to-deck: card (old) -> placeholder appears, deck card (new) - so card in grid gets name
-		// - to-grid: placeholder (old) -> card (new) appears, deck card removed - so card in grid gets name
-		//
-		// For to-deck: isPlaceholder=false (showing card) should get the name
-		// For to-grid: isPlaceholder=false (showing card after state change) should get the name
-		//
-		// So the CARD (not placeholder) always gets the transition name in the grid
-		if (!isPlaceholder) {
-			return `card-${cardId}`;
-		}
-		return 'none';
-	}
 
 	function getDeckCardTransitionName(card: co.loaded<typeof CardSchema>): string {
 		// For deck-to-sort-grid transitions
@@ -370,6 +349,9 @@
 	function getSortCardTransitionNameFromMap(cardId: string): string {
 		return sortCardTransitionNames.get(cardId) ?? 'none';
 	}
+
+	// Deck name is required and at least one card must be selected
+	const isFormValid = $derived(deckName.trim().length > 0 && selectedCardIds.length > 0);
 </script>
 
 <div
@@ -378,10 +360,10 @@
 >
 	<!-- Deck preview area - top right on small screens (row 1), right column on md+ -->
 	<div
-		class="deck-preview-area pointer-events-none col-span-1 row-span-1 row-start-1 flex max-w-full flex-row-reverse items-end justify-end gap-x-0 overflow-visible px-3 pt-5 pb-0 md:col-start-3 md:row-span-3 md:flex-col md:items-center md:justify-start md:py-4 md:pr-4"
+		class="deck-preview-area pointer-events-none col-span-1 row-span-1 row-start-1 flex max-w-full flex-row-reverse items-end justify-end gap-x-0 overflow-visible px-3 pt-5 pb-0 md:col-start-3 md:row-span-3 md:flex-col md:items-center md:justify-start md:py-5 md:pr-2.5 md:pl-0"
 	>
 		<div
-			class="deck-preview-wrapper pointer-events-none relative flex aspect-2/3 w-32 flex-col items-center justify-center overflow-visible md:w-full"
+			class="deck-preview-wrapper pointer-events-none relative flex aspect-2/3 h-full flex-col items-center justify-center overflow-visible md:h-auto md:w-full"
 		>
 			<!-- Match grid item size: 200px min-width with 2:3 aspect ratio = 200x300 container -->
 			<div
@@ -417,24 +399,14 @@
 					</div>
 				{/if}
 			</div>
-			<div class="mt-2 hidden flex-col items-center gap-2 text-center md:flex">
-				<span class="text-sm text-gray-600"
-					>{m.selected_card_count({ count: selectedCards.length })}</span
-				>
-			</div>
-			<Button type="submit" class="flex w-full md:hidden" disabled={!isFormValid}>
-				{buttonLabel}
-			</Button>
 		</div>
 		<!-- Form area - hidden on small screens, shown on md+ -->
 		<form
-			class="pointer-events-auto relative z-100 flex h-1/2 w-full flex-1 flex-col items-start justify-start md:h-full md:gap-4 md:py-4"
+			class="pointer-events-auto relative z-100 flex h-[calc(100%-3.375rem)] w-full flex-1 flex-col items-start justify-start pr-1 md:h-full md:gap-4 md:pt-4 md:pr-0"
 			onsubmit={handleSubmit}
 		>
-			<Field.Group
-				class="flex max-h-full w-full flex-row gap-1 pt-1.5 pr-1 md:flex-col md:gap-4 md:pt-0 md:pr-0"
-			>
-				<Field.Field class="flex min-w-0 flex-1 gap-1" data-invalid={!!errors}>
+			<Field.Group class="flex max-h-full w-full flex-1 flex-col gap-1 md:gap-2">
+				<Field.Field class="flex min-w-0 gap-1" data-invalid={!!errors}>
 					<Field.Label
 						class="bg-foreground px-0.5 text-sm leading-snug font-normal text-black uppercase"
 						>{m.name()}</Field.Label
@@ -445,7 +417,7 @@
 						type="text"
 						placeholder={m.deck_name_placeholder()}
 						bind:value={deckName}
-						class="text-base text-black md:text-xl"
+						class="text-base text-black md:text-lg"
 					/>
 					{#if errors}
 						<Field.Error>{errors.name}</Field.Error>
@@ -461,23 +433,27 @@
 						name="description"
 						placeholder={m.deck_description_placeholder()}
 						bind:value={deckDescription}
-						class="max-h-full min-h-20 max-w-full resize-none overflow-y-auto pt-1 text-sm text-black md:text-base"
+						class="max-h-full max-w-full flex-1 resize-none overflow-y-auto pt-1 text-sm text-black md:min-h-20 md:text-base"
 					/>
 					{#if errors}
 						<Field.Error>{errors?.message}</Field.Error>
 					{/if}
 				</Field.Field>
 			</Field.Group>
-			<Button type="submit" class="hidden w-full md:flex" disabled={!isFormValid}>
-				{buttonLabel}
-			</Button>
+			<button
+				type="submit"
+				class="w-full cursor-pointer bg-primary text-base leading-normal font-light text-primary-foreground opacity-100 backdrop-opacity-100 disabled:opacity-50 md:text-lg"
+				disabled={!isFormValid}
+			>
+				{`${buttonLabel} [${selectedCards.length}]`}
+			</button>
 		</form>
 	</div>
 
 	<!-- Grid area - full width row 2 on small screens, columns 1-2 rows 1-3 on md+ -->
 	<!-- Shows either card selection grid or sort grid based on editor mode -->
 	<div
-		class="grid-area z-0 col-span-1 row-span-1 row-start-2 overflow-visible md:col-start-2 md:row-span-3 md:row-start-1"
+		class="relative z-0 col-span-1 row-span-1 row-start-2 overflow-visible md:col-start-2 md:row-span-3 md:row-start-1"
 		data-mode={editorMode}
 	>
 		{#if editorMode === 'select'}
@@ -641,21 +617,11 @@
 		animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
-	/* Grid area container */
-	.grid-area {
-		position: relative;
-		overflow: hidden;
-	}
-
 	/* Sort grid container */
 	.sort-grid-container {
 		display: flex;
 		flex-direction: column;
 		height: 100%;
 		overflow: hidden;
-	}
-
-	.sort-grid-header {
-		flex-shrink: 0;
 	}
 </style>

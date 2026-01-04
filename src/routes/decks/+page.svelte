@@ -17,23 +17,20 @@
 
 	let scrollIndex = $state(0);
 	let totalItems = $state(0);
+	let itemsShown = $state(0);
 
 	$effect(() => {
 		layout.title = m.all_decks();
 	});
 
 	watch(
-		() => totalItems,
+		() => [itemsShown, totalItems],
 		() => {
-			if (totalItems > 0) {
-				layout.subtitle = `${scrollIndex + 1}/${m.deck_count({ count: totalItems })}`;
-			} else {
-				layout.subtitle = `${0}/${m.deck_count({ count: totalItems })}`;
-			}
+			layout.subtitle = `${itemsShown}/${m.deck_count({ count: totalItems })}`;
 		}
 	);
 </script>
 
 {#if me.current.$isLoaded && me.current.profile.decks.$isLoaded}
-	<DeckGrid decks={me.current.profile.decks} bind:scrollIndex bind:totalItems />
+	<DeckGrid decks={me.current.profile.decks} bind:scrollIndex bind:totalItems bind:itemsShown />
 {/if}

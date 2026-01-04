@@ -9,9 +9,15 @@
 		decks: co.loaded<co.List<typeof DeckSchema>>;
 		scrollIndex?: number;
 		totalItems?: number;
+		itemsShown?: number;
 	};
 
-	let { decks, scrollIndex = $bindable(0), totalItems = $bindable(0) }: DeckGridProps = $props();
+	let {
+		decks,
+		scrollIndex = $bindable(0),
+		totalItems = $bindable(0),
+		itemsShown = $bindable(0)
+	}: DeckGridProps = $props();
 
 	function handleEditClick(event: MouseEvent, deckId: string) {
 		event.stopPropagation();
@@ -31,6 +37,7 @@
 	emptyDescription="Try a different search term"
 	bind:scrollIndex
 	bind:totalItems
+	bind:itemsShown
 	class="pointer-events-auto col-span-3 row-span-2 row-start-2 md:col-span-1 md:col-start-2 md:row-span-3 md:overflow-x-visible"
 >
 	{#snippet children({ item, highlighted })}

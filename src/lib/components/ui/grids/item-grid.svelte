@@ -38,6 +38,7 @@
 		class?: string;
 		scrollIndex?: number;
 		totalItems?: number;
+		itemsShown?: number;
 	};
 
 	let {
@@ -53,13 +54,14 @@
 		minWidth = '200px',
 		class: className,
 		scrollIndex = $bindable(0),
-		totalItems = $bindable(0)
+		totalItems = $bindable(0),
+		itemsShown = $bindable(0)
 	}: GridProps<any> = $props();
 
 	let gridWrapper: HTMLElement | undefined = $state();
+	let outerContainer: HTMLElement | undefined = $state();
 
 	// Update totalItems when filtered items change
-
 	watch(
 		() => filtered.length,
 		() => {
@@ -67,60 +69,117 @@
 		}
 	);
 
-	// Calculate scroll index based on scroll position
-	function updateScrollIndex() {
-		if (!gridWrapper) return;
+	// Recalculate on mount, when items change, or when containers become available
+	$effect(() => {
+		// Depend on filtered.length and containers to recalculate when items change or element mounts
+		filtered.length;
+		if (!gridWrapper || !outerContainer) return;
+
+		// Use double requestAnimationFrame to ensure layout is complete
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				updateItemsShown();
+			});
+		});
+	});
+
+	// Attach scroll listener to the correct container based on screen size
+	$effect(() => {
+		if (!outerContainer) return;
+
+		const handleScroll = () => updateItemsShown();
+		outerContainer.addEventListener('scroll', handleScroll);
+
+		return () => {
+			outerContainer.removeEventListener('scroll', handleScroll);
+		};
+	});
+
+	// Handle window resize
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		const handleResize = () => {
+			updateItemsShown();
+		};
+
+		window.addEventListener('resize', handleResize);
+		return () => {
+			window.removeEventListener('resize', handleResize);
+		};
+	});
+
+	// Calculate items shown based on scroll position and viewport
+	function updateItemsShown() {
+		if (!gridWrapper || !outerContainer) return;
 
 		const gridElement = gridWrapper.querySelector('.item-grid') as HTMLElement;
 		if (!gridElement) return;
 
 		const gridItems = gridElement.children;
-		if (gridItems.length === 0) return;
+		if (gridItems.length === 0) {
+			itemsShown = 0;
+			scrollIndex = 0;
+			return;
+		}
 
-		// Check if we're in mobile (horizontal scroll) or desktop (vertical scroll) mode
 		const isMobile = window.matchMedia('(max-width: 767px)').matches;
 
 		if (isMobile) {
-			// Horizontal scroll - find first visible item
-			const containerLeft = gridWrapper.scrollLeft;
-			const containerWidth = gridWrapper.clientWidth;
-			const containerCenter = containerLeft + containerWidth / 2;
-
+			// Mobile: horizontal scroll - use gridWrapper as scroll container
+			const wrapperRect = gridWrapper.getBoundingClientRect();
+			let count = 0;
 			let closestIndex = 0;
 			let closestDistance = Infinity;
+			const wrapperCenter = wrapperRect.left + wrapperRect.width / 2;
 
 			for (let i = 0; i < gridItems.length; i++) {
 				const item = gridItems[i] as HTMLElement;
-				const itemCenter = item.offsetLeft + item.offsetWidth / 2;
-				const distance = Math.abs(itemCenter - containerCenter);
+				const itemRect = item.getBoundingClientRect();
 
+				// Count items whose right edge is within or before the wrapper's right edge
+				if (itemRect.right <= wrapperRect.right + 1) {
+					count++;
+				}
+
+				// Find center item for scrollIndex
+				const itemCenter = itemRect.left + itemRect.width / 2;
+				const distance = Math.abs(itemCenter - wrapperCenter);
 				if (distance < closestDistance) {
 					closestDistance = distance;
 					closestIndex = i;
 				}
 			}
 
+			itemsShown = Math.max(count, 1); // At least 1 if there are items
 			scrollIndex = closestIndex;
 		} else {
-			// Vertical scroll - find first visible item
-			const containerTop = gridWrapper.scrollTop;
-			const containerHeight = gridWrapper.clientHeight;
-			const containerCenter = containerTop + containerHeight / 2;
-
+			// Desktop: vertical scroll - use outerContainer as scroll container
+			const containerRect = outerContainer.getBoundingClientRect();
+			let count = 0;
 			let closestIndex = 0;
 			let closestDistance = Infinity;
+			const containerCenter = containerRect.top + containerRect.height / 2;
 
 			for (let i = 0; i < gridItems.length; i++) {
 				const item = gridItems[i] as HTMLElement;
-				const itemCenter = item.offsetTop + item.offsetHeight / 2;
-				const distance = Math.abs(itemCenter - containerCenter);
+				const itemRect = item.getBoundingClientRect();
 
+				// Count items whose bottom edge is within or before the container's bottom edge
+				if (itemRect.bottom <= containerRect.bottom + 1) {
+					count++;
+				}
+
+				// Find center item for scrollIndex
+				const itemCenter = itemRect.top + itemRect.height / 2;
+				const distance = Math.abs(itemCenter - containerCenter);
 				if (distance < closestDistance) {
 					closestDistance = distance;
 					closestIndex = i;
 				}
 			}
 
+			itemsShown = Math.max(count, 1); // At least 1 if there are items
 			scrollIndex = closestIndex;
 		}
 	}
@@ -153,6 +212,7 @@
 </script>
 
 <div
+	bind:this={outerContainer}
 	class={cn(
 		'flex scrollbar-none! flex-col items-center gap-3 overflow-y-visible focus-visible:outline-0 md:overflow-x-visible md:overflow-y-auto',
 		className
@@ -171,7 +231,7 @@
 	{#if filtered.length}
 		<div
 			bind:this={gridWrapper}
-			onscroll={updateScrollIndex}
+			onscroll={updateItemsShown}
 			class="grid-wrapper scrollbar-none! min-h-full w-full overflow-x-auto overflow-y-visible! md:min-h-0 md:overflow-x-visible! md:overflow-y-auto md:pt-34 md:pb-12"
 		>
 			<div

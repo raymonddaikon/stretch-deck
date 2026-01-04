@@ -32,7 +32,8 @@
 
 	$effect(() => {
 		layout.title = m.edit_deck();
-		layout.subtitle = deck.current?.$isLoaded ? (deck.current.name ?? '') : '';
+		layout.subtitle = '';
+		// layout.subtitle = deck.current?.$isLoaded ? (deck.current.name ?? '') : '';
 	});
 </script>
 

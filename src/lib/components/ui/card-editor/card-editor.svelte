@@ -5,7 +5,6 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { ZodError } from 'zod';
 	import { goto } from '$app/navigation';
-	import { Button } from '$lib/components/ui/button';
 	import * as Field from '$lib/components/ui/field';
 	import { Input } from '$lib/components/ui/input';
 	import TagsInput from '$lib/components/ui/tags-input/tags-input.svelte';
@@ -58,7 +57,7 @@
 		changedImageIndices.add(index);
 	}
 
-	const buttonLabel = $derived(mode === 'create' ? 'Create' : 'Save');
+	const buttonLabel = $derived(mode === 'create' ? m.create_card() : m.save_card());
 
 	// Check if form is valid for enabling submit button
 	const isFormValid = $derived(name.trim().length > 0 && tags.length > 0);
@@ -237,7 +236,7 @@
 						class="col-span-6 row-span-1 flex h-full w-full justify-between pl-2"
 					>
 						<Field.Label class="flex flex-none text-sm font-normal text-black uppercase"
-							>{m.reps()}</Field.Label
+							>{`${m.reps()}:`}</Field.Label
 						>
 						<div class="relative flex items-center">
 							<Input
@@ -252,7 +251,7 @@
 							<select
 								id="units"
 								name="units"
-								class="h-full flex-none border-l bg-transparent px-2 py-1 text-sm font-normal text-black uppercase"
+								class="h-full flex-none border-l bg-transparent px-2 py-2 text-sm font-normal text-black uppercase"
 							>
 								{@render selectInner()}
 							</select>
@@ -263,7 +262,7 @@
 						class="col-span-6 row-span-1 flex h-full w-full justify-between pl-2"
 					>
 						<Field.Label class="flex flex-none text-sm font-normal text-black uppercase"
-							>{m.sets()}</Field.Label
+							>{`${m.sets()}:`}</Field.Label
 						>
 						<Input
 							type="number"
@@ -279,7 +278,7 @@
 						class="col-span-6 row-span-1 flex h-full w-full flex-col items-start gap-1 px-2 pt-2 pb-1"
 					>
 						<Field.Label class="flex-none text-sm font-normal text-black uppercase"
-							>{m.description()}</Field.Label
+							>{`${m.description()}:`}</Field.Label
 						>
 						<div class="relative w-full flex-1">
 							<Textarea
@@ -301,21 +300,18 @@
 	style:view-transition-name={initialCard ? `card-${initialCard.$jazz.id}` : undefined}
 >
 	<article class="card card-shadow">
-		<form class="card-content p-1" onsubmit={handleSubmit}>
+		<form id="new-card" class="card-content p-1" onsubmit={handleSubmit}>
 			{@render cardFront()}
 		</form>
 	</article>
-	<Button
-		type="button"
-		class="absolute -bottom-14 left-0 w-full"
+	<button
+		form="new-card"
+		class="absolute -bottom-14 left-0 w-full bg-primary text-primary-foreground hover:bg-primary/90"
 		disabled={!isFormValid}
-		onclick={() => {
-			const form = document.querySelector('.card-wrapper form') as HTMLFormElement;
-			if (form) form.requestSubmit();
-		}}
+		type="submit"
 	>
 		{buttonLabel}
-	</Button>
+	</button>
 </div>
 
 <style>

@@ -30,8 +30,8 @@
 	// import 'jazz-tools/inspector/register-custom-element';
 
 	const sync: SyncConfig = {
-		peer: `wss://cloud.jazz.tools/?key=${PUBLIC_JAZZ_API_KEY}`,
-		// peer: 'ws://localhost:4200',
+		// peer: `wss://cloud.jazz.tools/?key=${PUBLIC_JAZZ_API_KEY}`,
+		peer: 'ws://localhost:4200',
 		when: 'always'
 	};
 
@@ -40,8 +40,30 @@
 	const layoutContext = $state({ title: '', subtitle: '' });
 	setLayoutContext(layoutContext);
 
+	type NavItem = {
+		href: string;
+		text: string;
+	};
+
+	const navItems: NavItem[] = [
+		{ href: '/create-deck', text: m.create_deck() },
+		{ href: '/create-card', text: m.create_card() },
+		{ href: '/decks', text: m.all_decks() },
+		{ href: '/cards', text: m.all_cards() },
+		{ href: '/add', text: m.add() }
+	];
+
 	let { children } = $props();
 </script>
+
+{#snippet navItem({ href, text }: NavItem)}
+	<a
+		{href}
+		class="focused:text-black pointer-events-auto z-50 flex-none bg-primary px-1 text-base text-primary-foreground uppercase select-none hover:bg-foreground hover:text-black focus:bg-foreground"
+	>
+		{text}
+	</a>
+{/snippet}
 
 <svelte:head><link rel="icon" href={favicon} />{@html webManifestLink}</svelte:head>
 <ModeWatcher />
@@ -53,9 +75,9 @@
 		<div
 			class="relative grid h-screen w-screen grid-cols-1 grid-rows-1 overflow-x-clip overflow-y-hidden overscroll-contain"
 		>
-			<div class="deck pointer-events-none grid gap-[1.5ch]">
+			<div class="deck pointer-events-none grid gap-5">
 				<header
-					class="pointer-events-auto flex max-w-full flex-col items-start gap-[1ch] px-2.5 pt-4 [grid-area:header] md:px-1 md:pt-1.5 lg:max-w-1/2"
+					class="pointer-events-auto flex max-w-full flex-col items-start gap-3.5 px-1.5 pt-4 [grid-area:header] md:gap-0 md:px-0 md:pt-1.5 lg:max-w-1/2"
 				>
 					<h2
 						class="text-3xl text-black select-none md:text-5xl"
@@ -68,38 +90,17 @@
 						}}
 					></h2>
 					{#if layoutContext.subtitle}
-						<p class="px-1 text-lg text-black tabular-nums opacity-50 md:px-3">
+						<p class="px-1 text-base text-black tabular-nums opacity-50 md:px-2.5 md:text-lg">
 							{layoutContext.subtitle}
 						</p>
 					{/if}
 				</header>
 				<nav
-					class="flex flex-row items-center justify-start gap-[2ch] px-[1.3ch] pt-1 [grid-area:footer] *:bg-foreground *:leading-snug md:flex-col md:items-start md:pt-px md:[grid-area:sidebar]"
+					class="fixed bottom-0 left-0 z-100 flex scrollbar-none max-w-full flex-row items-center justify-start gap-x-2.5 gap-y-5 overflow-x-auto px-2.5 pb-2.5 [grid-area:footer] *:leading-snug md:h-full md:flex-col md:items-start md:justify-center md:pb-0 md:[grid-area:sidebar]"
 				>
-					<a
-						href="/create-deck"
-						class="pointer-events-auto z-50 flex-none text-base text-black uppercase"
-					>
-						{m.create_deck()}
-					</a>
-					<a
-						href="/create-card"
-						class="pointer-events-auto z-50 flex-none text-base text-black uppercase"
-					>
-						{m.create_card()}
-					</a>
-					<a
-						href="/decks"
-						class="pointer-events-auto z-50 flex-none text-base text-black uppercase"
-					>
-						{m.all_decks()}
-					</a>
-					<a
-						href="/cards"
-						class="pointer-events-auto z-50 flex-none text-base text-black uppercase"
-					>
-						{m.all_cards()}
-					</a>
+					{#each navItems as item}
+						{@render navItem(item)}
+					{/each}
 				</nav>
 			</div>
 
@@ -159,7 +160,7 @@
 			grid-template-areas:
 				'header header header'
 				'sidebar deck aside'
-				'footer footer footer';
+				'sidebar footer footer';
 			/*grid-template-columns: 1fr min(360px, 90%) 1fr;*/
 			grid-template-columns: auto 1fr auto;
 			grid-template-rows: 1fr min(360px * 1.5, 90svw * 1.5) 1fr;

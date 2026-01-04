@@ -9,9 +9,15 @@
 		cards: co.loaded<co.List<typeof CardSchema>>;
 		scrollIndex?: number;
 		totalItems?: number;
+		itemsShown?: number;
 	};
 
-	let { cards, scrollIndex = $bindable(0), totalItems = $bindable(0) }: CardGridProps = $props();
+	let {
+		cards,
+		scrollIndex = $bindable(0),
+		totalItems = $bindable(0),
+		itemsShown = $bindable(0)
+	}: CardGridProps = $props();
 
 	// Tilt state for each card in the grid
 	let cardTilts = new SvelteMap<string, { tiltX: number; tiltY: number }>();
@@ -65,6 +71,7 @@
 	emptyDescription="Try a different search term"
 	bind:scrollIndex
 	bind:totalItems
+	bind:itemsShown
 	class="pointer-events-auto col-span-3 row-span-2 row-start-2 md:col-span-1 md:col-start-2 md:row-span-3 md:overflow-x-visible"
 >
 	{#snippet children({ item, highlighted })}

@@ -25,16 +25,7 @@
 			}
 		}
 	],
-	"selected_card_count": [
-		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
-			"match": {
-				"countPlural=one": "{count} card selected",
-				"countPlural=other": "{count} cards selected"
-			}
-		}
-	],
+	"add": "Add",
 	"edit_card": "Edit Card",
 	"edit_deck": "Edit Deck",
 	"save_card": "Save Card",
