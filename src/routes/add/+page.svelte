@@ -5,6 +5,7 @@
 	import { MediaQuery } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { deviceOrientation } from '$lib/actions/device-orientation.svelte';
 	import { Card as CardComponent } from '$lib/components/ui/card';
 	import DeckComponent from '$lib/components/ui/deck/deck.svelte';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
@@ -128,66 +129,26 @@
 	let tiltX = $state(0);
 	let tiltY = $state(0);
 
-	// Device orientation for mobile tilt
-	let deviceTiltX = $state(0);
-	let deviceTiltY = $state(0);
-	let orientationPermissionGranted = $state(false);
-
-	async function requestOrientationPermission() {
-		if (
-			typeof DeviceOrientationEvent !== 'undefined' &&
-			typeof (DeviceOrientationEvent as any).requestPermission === 'function'
-		) {
-			try {
-				const permission = await (DeviceOrientationEvent as any).requestPermission();
-				if (permission === 'granted') {
-					orientationPermissionGranted = true;
-				}
-			} catch (e) {
-				console.error('Device orientation permission denied:', e);
-			}
-		} else {
-			orientationPermissionGranted = true;
-		}
-	}
-
-	function handleDeviceOrientation(event: DeviceOrientationEvent) {
-		if (!isMobile.current) return;
-
-		const beta = event.beta;
-		const gamma = event.gamma;
-
-		if (beta === null || gamma === null) return;
-
-		const normalizedBeta = Math.max(-1, Math.min(1, (beta - 45) / 30));
-		const normalizedGamma = Math.max(-1, Math.min(1, gamma / 30));
-
-		deviceTiltX = normalizedBeta * -1 * tiltRange;
-		deviceTiltY = normalizedGamma * tiltRange;
-	}
-
-	const handleFirstInteraction = () => {
-		if (!orientationPermissionGranted) {
-			requestOrientationPermission();
-		}
-		window.removeEventListener('touchstart', handleFirstInteraction);
-	};
-
+	// Subscribe to device orientation events on mobile
 	$effect(() => {
 		if (!isMobile.current) return;
-
-		window.addEventListener('touchstart', handleFirstInteraction, { once: true });
-		window.addEventListener('deviceorientation', handleDeviceOrientation);
-
-		return () => {
-			window.removeEventListener('touchstart', handleFirstInteraction);
-			window.removeEventListener('deviceorientation', handleDeviceOrientation);
-		};
+		return deviceOrientation.subscribe();
 	});
 
+	// Request permission on first interaction for iOS
+	function handleFirstInteraction() {
+		if (deviceOrientation.permissionRequired && !deviceOrientation.permissionGranted) {
+			deviceOrientation.requestPermission();
+		}
+	}
+
 	// Update tilt values based on device or pointer
-	const currentTiltX = $derived(isMobile.current ? deviceTiltX : tiltX);
-	const currentTiltY = $derived(isMobile.current ? deviceTiltY : tiltY);
+	const currentTiltX = $derived(
+		isMobile.current ? deviceOrientation.getTilt(tiltRange).tiltX : tiltX
+	);
+	const currentTiltY = $derived(
+		isMobile.current ? deviceOrientation.getTilt(tiltRange).tiltY : tiltY
+	);
 
 	function handlePointerMove(event: PointerEvent) {
 		if (isMobile.current || !cardContainerElement) return;
@@ -292,6 +253,7 @@
 					onpointermove={handlePointerMove}
 					onpointerleave={handlePointerLeave}
 					onclick={handleCardClick}
+					ontouchstart={handleFirstInteraction}
 				>
 					<CardComponent
 						card={previewCard.current}

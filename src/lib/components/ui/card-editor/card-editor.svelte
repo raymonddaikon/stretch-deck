@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { co, deleteCoValues, ImageDefinition } from 'jazz-tools';
+	import {
+		CoMap,
+		co,
+		deleteCoValues,
+		ImageDefinition,
+		type MaybeLoaded,
+		type SingleCoFeedEntry
+	} from 'jazz-tools';
 	import { createImage } from 'jazz-tools/media';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { ZodError } from 'zod';
@@ -9,10 +16,11 @@
 	import { Input } from '$lib/components/ui/input';
 	import TagsInput from '$lib/components/ui/tags-input/tags-input.svelte';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
-	import { rarityTiers } from '$lib/constants';
+	import { type RarityTier, rarityTiers } from '$lib/constants';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { ActivityFeed, Card as CardSchema, StretchCard, StretchDeckAccount } from '$lib/schema';
+	import { cn } from '$lib/utils';
 	import CardEditorHeader from './card-editor-header.svelte';
 	import { schema, UNITS_OPTIONS, type Units } from './schema';
 
@@ -31,9 +39,9 @@
 	// Form state - initialize from initialCard if provided
 	let name = $state(initialCard?.name ?? '');
 	let tags = $state<string[]>(initialCard?.areas ?? []);
-	let reps = $state(initialCard?.reps ?? 0);
+	let reps = $state(initialCard?.reps);
 	// let units = $state<Units>(initialCard?.units ?? 'reps');
-	let sets = $state(initialCard?.sets ?? 0);
+	let sets = $state(initialCard?.sets);
 	let description = $state(initialCard?.description ?? '');
 	let changedImageIndices = new SvelteSet<number>();
 	let headerImages = $state<(string | null)[]>([null, null, null]);
@@ -192,6 +200,60 @@
 			goto('/cards');
 		}
 	}
+
+	const allActivity = $derived.by(() => {
+		const byUser = new Map<
+			string,
+			SingleCoFeedEntry<
+				MaybeLoaded<
+					{
+						readonly completed: Date;
+					} & CoMap
+				>
+			>[]
+		>();
+		if (initialCard?.activity?.$isLoaded) {
+			for (const entry of Object.values(initialCard.activity.perAccount)) {
+				if (entry.value.$isLoaded) {
+					for (const ac of entry.all) {
+						const userId = ac.by?.$jazz?.id;
+						if (userId) {
+							const existing = byUser.get(userId) ?? [];
+							existing.push(ac);
+							byUser.set(userId, existing);
+						}
+					}
+				}
+			}
+		}
+		return byUser;
+	});
+
+	const totalActivityDays = $derived.by(() => {
+		let totalUniqueDays = 0;
+		for (const activities of allActivity.values()) {
+			const userDays = new Set<string>();
+			for (const activity of activities) {
+				if (activity.madeAt) {
+					const day = new Date(activity.madeAt).toDateString();
+					userDays.add(day);
+				}
+			}
+			totalUniqueDays += userDays.size;
+		}
+		return totalUniqueDays;
+	});
+
+	const currentRarity = $derived.by((): RarityTier => {
+		//	Find the highest tier the user qualifies for
+		let tier: RarityTier = rarityTiers[0];
+		for (const t of rarityTiers) {
+			if (totalActivityDays >= t.minDays) {
+				tier = t;
+			}
+		}
+		return tier;
+	});
 </script>
 
 {#snippet selectCustom()}
@@ -232,10 +294,15 @@
 			>
 				<div class="flex size-9 flex-none items-center justify-center">
 					<div
-						class="rarity-badge rarity-{rarityTiers[0].shape}"
-						style:--rarity-color={rarityTiers[0].color}
+						class="rarity-badge rarity-{currentRarity.shape}"
+						style:--rarity-color={currentRarity.color}
 					>
-						<span class="rarity-value">-</span>
+						<span
+							class={cn(
+								'rarity-value',
+								(currentRarity.shape === 'triangle' || currentRarity.shape === 'pentagon') && 'pt-1'
+							)}>{totalActivityDays}</span
+						>
 					</div>
 				</div>
 				<Input
@@ -243,7 +310,7 @@
 					id="name"
 					name="name"
 					bind:value={name}
-					class="card-title h-full flex-1 px-2 text-black uppercase select-none"
+					class="h-full flex-1 px-2 text-black uppercase select-none"
 					placeholder={m.card_title_placeholder()}
 				/>
 			</Field.Field>
@@ -264,15 +331,15 @@
 				>
 					<Field.Field
 						orientation="horizontal"
-						class="col-span-6 row-span-1 flex h-full w-full items-start justify-between gap-1"
+						class="col-span-6 row-span-1 flex h-full w-full items-start justify-between gap-1 pt-2 pb-1"
 					>
 						<Field.Label
-							class="flex flex-none items-center px-2 py-2.5 text-sm font-normal text-black uppercase"
+							class="flex flex-none items-center px-2 pt-1 text-sm font-normal text-black uppercase"
 						>
-							<span class="inline pt-px text-box-trim"> {`${m.areas()}:`} </span>
+							<span class="inline text-box-trim"> {`${m.areas()}:`} </span>
 						</Field.Label>
 						<TagsInput
-							class="bg-transparent text-right text-sm"
+							class="-mb-1 origin-top-right scale-75 bg-transparent py-0 text-right text-base"
 							placeholder={tags.length < 1 ? m.card_areas_placeholder() : ''}
 							bind:value={tags}
 						/>
@@ -285,21 +352,21 @@
 						<Field.Label class="flex flex-none text-sm font-normal text-black uppercase"
 							>{`${m.reps()}:`}</Field.Label
 						>
-						<div class="relative flex items-center">
+						<div class="relative flex h-8 origin-top-right translate-y-1 scale-75 items-center">
 							<Input
 								type="number"
 								id="reps"
 								name="reps"
 								bind:value={reps}
-								class="flex w-16 flex-none p-2 text-right text-sm font-normal text-black uppercase tabular-nums"
-								placeholder="10"
+								class="flex w-16 flex-none px-2 text-right text-base font-normal text-black uppercase tabular-nums"
+								placeholder="5"
 							/>
 
 							{#if supportsCustomSelect}
 								<select
 									id="units"
 									name="units"
-									class="custom-select h-full flex-none border-l bg-transparent px-2 py-2 text-sm font-normal text-black uppercase"
+									class="custom-select h-[133.33%] flex-none border-l bg-transparent p-2.25 text-base font-normal text-black uppercase"
 								>
 									{@render selectCustom()}
 								</select>
@@ -307,7 +374,7 @@
 								<select
 									id="units"
 									name="units"
-									class="h-full flex-none border-l bg-transparent px-2 py-2 text-sm font-normal text-black uppercase"
+									class="h-[133.33%] flex-none border-l bg-transparent p-2.25 text-base font-normal text-black uppercase"
 								>
 									{@render selectFallback()}
 								</select>
@@ -326,7 +393,7 @@
 							id="sets"
 							name="sets"
 							bind:value={sets}
-							class="flex flex-none p-2 text-right text-sm font-normal text-black uppercase tabular-nums"
+							class="flex h-8 flex-none origin-top-right translate-y-1 scale-75 px-2 text-right text-base font-normal text-black uppercase tabular-nums"
 							placeholder="3"
 						/>
 					</Field.Field>
@@ -342,7 +409,7 @@
 								name="description"
 								bind:value={description}
 								placeholder={m.card_description_placeholder()}
-								class="scrollbar-thin field-sizing-fixed h-full w-full resize-none text-sm text-black"
+								class="scrollbar-thin field-sizing-fixed h-[133.33%] w-[133.33%] origin-top-left scale-75 resize-none text-base text-black"
 							/>
 						</div>
 					</Field.Field>
@@ -423,9 +490,7 @@
 		height: var(--badge-size);
 		background-color: var(--rarity-color);
 	}
-	.rarity-circle {
-		clip-path: circle(50%);
-	}
+
 	.rarity-value {
 		position: relative;
 		z-index: 1;
@@ -434,6 +499,61 @@
 		color: white;
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 		line-height: 1;
+	}
+
+	/* Circle - uses border-radius */
+	.rarity-circle {
+		clip-path: circle(50%);
+	}
+
+	/* Triangle (3 sides) - equilateral pointing up */
+	.rarity-triangle {
+		clip-path: shape(from 50% 0%, line to 100% 87%, line to 0% 87%, close);
+	}
+
+	/* Square (4 sides) - rotated 45deg to appear as diamond */
+	.rarity-square {
+		clip-path: shape(from 50% 0%, line to 100% 50%, line to 50% 100%, line to 0% 50%, close);
+	}
+
+	/* Pentagon (5 sides) - pointing up */
+	.rarity-pentagon {
+		clip-path: shape(
+			from 50% 0%,
+			line to 100% 38%,
+			line to 81% 100%,
+			line to 19% 100%,
+			line to 0% 38%,
+			close
+		);
+	}
+
+	/* Hexagon (6 sides) - flat top */
+	.rarity-hexagon {
+		clip-path: shape(
+			from 25% 0%,
+			line to 75% 0%,
+			line to 100% 50%,
+			line to 75% 100%,
+			line to 25% 100%,
+			line to 0% 50%,
+			close
+		);
+	}
+
+	/* Octagon (8 sides) */
+	.rarity-octagon {
+		clip-path: shape(
+			from 30% 0%,
+			line to 70% 0%,
+			line to 100% 30%,
+			line to 100% 70%,
+			line to 70% 100%,
+			line to 30% 100%,
+			line to 0% 70%,
+			line to 0% 30%,
+			close
+		);
 	}
 
 	.card-wrapper {
@@ -473,6 +593,17 @@
 		overflow: hidden;
 		height: 100%;
 		width: 100%;
+
+		/*
+		 * Scale up the card and its contents by 1/0.875 = 1.142857
+		 * Then inputs use text-base (16px) which scales to 16 * 0.875 = 14px visually
+		 * This prevents iOS zoom on input focus while maintaining text-sm appearance
+		 */
+		--input-scale: 0.875;
+		transform: scale(var(--input-scale));
+		transform-origin: top left;
+		width: calc(100% / var(--input-scale));
+		height: calc(100% / var(--input-scale));
 	}
 
 	.card-header-container {

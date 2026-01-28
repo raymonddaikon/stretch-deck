@@ -5,6 +5,7 @@ import { StretchDeckAccount } from '$lib/schema'
 export class LayoutContext {
 	title = $state('')
 	subtitle = $state('')
+	qrLink: string | null = $state(null)
 
 	me = new AccountCoState(StretchDeckAccount, {
 		resolve: {
@@ -15,7 +16,6 @@ export class LayoutContext {
 			}
 		}
 	})
-	constructor() {}
 }
 
 export const [getLayoutContext, setLayoutContext] =

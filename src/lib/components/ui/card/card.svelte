@@ -8,7 +8,7 @@
 	import { type RarityTier, rarityTiers } from '$lib/constants';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
 	import * as m from '$lib/paraglide/messages';
-	import { Card as CardSchema, StretchDeckAccount, User as StretchDeckUser } from '$lib/schema';
+	import { Card as CardSchema, User as StretchDeckUser } from '$lib/schema';
 	import { cn } from '$lib/utils';
 	import ActivityCalendar from '../activity-calendar/activity-calendar.svelte';
 	import QrShareButton from '../qr-share-button.svelte';

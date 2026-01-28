@@ -41,8 +41,15 @@
 		});
 	});
 
+	const MAX_TAGS = 5;
+
 	const enter = () => {
 		if (isComposing) return;
+
+		if (value.length >= MAX_TAGS) {
+			invalid = true;
+			return;
+		}
 
 		const validated = validate(inputValue, value);
 
@@ -182,6 +189,12 @@
 	const blur = () => {
 		tagIndex = undefined;
 	};
+
+	let inputRef: HTMLInputElement;
+
+	const focusInput = () => {
+		inputRef?.focus();
+	};
 </script>
 
 <div
@@ -190,12 +203,16 @@
 		className
 	)}
 	aria-disabled={disabled}
+	onclick={focusInput}
+	role="textbox"
+	tabindex="-1"
 >
 	{#each value as tag, i (tag)}
 		<TagsInputTag value={tag} {disabled} onDelete={deleteValue} active={i === tagIndex} />
 	{/each}
 	<input
 		{...rest}
+		bind:this={inputRef}
 		bind:value={inputValue}
 		onblur={blur}
 		oncompositionstart={compositionStart}
@@ -204,6 +221,6 @@
 		{placeholder}
 		data-invalid={invalid}
 		onkeydown={keydown}
-		class="field-sizing-content min-h-4 w-auto shrink basis-0 border-none bg-transparent px-2 text-right text-black outline-hidden placeholder:text-muted-foreground focus:outline-hidden disabled:cursor-not-allowed data-[invalid=true]:text-red-500 md:text-sm"
+		class="field-sizing-content min-h-4 w-auto shrink basis-0 border-none bg-transparent px-2 text-right text-base text-black outline-hidden placeholder:text-muted-foreground focus:outline-hidden disabled:cursor-not-allowed data-[invalid=true]:text-red-500"
 	/>
 </div>

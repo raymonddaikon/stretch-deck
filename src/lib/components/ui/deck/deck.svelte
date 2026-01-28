@@ -3,6 +3,7 @@
 	import { watch } from 'runed';
 	import { MediaQuery, SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { page } from '$app/state';
+	import { deviceOrientation } from '$lib/actions/device-orientation.svelte';
 	import { Card, Snap } from '$lib/components/ui/card';
 	import * as m from '$lib/paraglide/messages';
 	import { Card as CardSchema, Deck as DeckSchema } from '$lib/schema';
@@ -115,71 +116,18 @@
 	let mouseClientX = $state(0);
 	let mouseClientY = $state(0);
 
-	// Device orientation for tilt effect on mobile
-	let deviceTiltX = $state(0);
-	let deviceTiltY = $state(0);
-	let orientationPermissionGranted = $state(false);
-
-	// Request permission and set up device orientation listener
-	async function requestOrientationPermission() {
-		// Check if DeviceOrientationEvent exists and requires permission (iOS 13+)
-		if (
-			typeof DeviceOrientationEvent !== 'undefined' &&
-			typeof (DeviceOrientationEvent as any).requestPermission === 'function'
-		) {
-			try {
-				const permission = await (DeviceOrientationEvent as any).requestPermission();
-				if (permission === 'granted') {
-					orientationPermissionGranted = true;
-				}
-			} catch (e) {
-				console.error('Device orientation permission denied:', e);
-			}
-		} else {
-			// Non-iOS devices don't require permission
-			orientationPermissionGranted = true;
-		}
-	}
-
-	function handleDeviceOrientation(event: DeviceOrientationEvent) {
-		if (!isMobile.current) return;
-
-		const beta = event.beta; // Front-to-back tilt (-180 to 180)
-		const gamma = event.gamma; // Left-to-right tilt (-90 to 90)
-
-		if (beta === null || gamma === null) return;
-
-		// Normalize values to -1 to 1 range
-		// Beta: typical holding angle is around 45 degrees, so we center around that
-		// and use a range of about ±30 degrees for full tilt
-		const normalizedBeta = Math.max(-1, Math.min(1, (beta - 45) / 30));
-		// Gamma: use ±30 degrees for full tilt
-		const normalizedGamma = Math.max(-1, Math.min(1, gamma / 30));
-
-		deviceTiltX = normalizedBeta;
-		deviceTiltY = normalizedGamma;
-	}
-
-	// Request permission on first interaction for iOS
-	const handleFirstInteraction = () => {
-		if (!orientationPermissionGranted) {
-			requestOrientationPermission();
-		}
-		window.removeEventListener('touchstart', handleFirstInteraction);
-	};
-
-	// Set up device orientation listener
+	// Subscribe to device orientation events on mobile
 	$effect(() => {
 		if (!isMobile.current) return;
-
-		window.addEventListener('touchstart', handleFirstInteraction, { once: true });
-		window.addEventListener('deviceorientation', handleDeviceOrientation);
-
-		return () => {
-			window.removeEventListener('touchstart', handleFirstInteraction);
-			window.removeEventListener('deviceorientation', handleDeviceOrientation);
-		};
+		return deviceOrientation.subscribe();
 	});
+
+	// Request permission on first interaction for iOS
+	function handleFirstInteraction() {
+		if (deviceOrientation.permissionRequired && !deviceOrientation.permissionGranted) {
+			deviceOrientation.requestPermission();
+		}
+	}
 
 	// Store card element references
 	let cardElements = new SvelteMap<number, HTMLElement>();
@@ -303,9 +251,7 @@
 
 		// Use device orientation on mobile, pointer position on desktop
 		if (isMobile.current) {
-			const tiltX = deviceTiltX * -1 * tiltRange;
-			const tiltY = deviceTiltY * tiltRange;
-			return { tiltX, tiltY };
+			return deviceOrientation.getTilt(tiltRange);
 		}
 
 		// Desktop: only tilt if pointer is over the card
@@ -341,6 +287,7 @@
 	onpointerleave={handlePointerLeave}
 	onclick={handleClick}
 	onkeydown={handleKeydown}
+	ontouchstart={handleFirstInteraction}
 	style:view-transition-name={viewTransitionName}
 >
 	<Snap bind:progress {length} {transitionKey}>

@@ -150,7 +150,7 @@
 	.deck {
 		grid-area: 1/1;
 		grid-template-areas:
-			'header header qr'
+			'header header header'
 			'sidebar deck aside'
 			'footer footer footer';
 		/*grid-template-columns: 1fr min(360px, 90%) 1fr;*/
@@ -162,7 +162,7 @@
 		.deck {
 			grid-area: 1/1;
 			grid-template-areas:
-				'header header qr'
+				'header header header'
 				'sidebar deck aside'
 				'sidebar footer footer';
 			/*grid-template-columns: 1fr min(360px, 90%) 1fr;*/

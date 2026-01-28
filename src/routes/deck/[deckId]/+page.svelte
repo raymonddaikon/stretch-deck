@@ -5,9 +5,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Deck from '$lib/components/ui/deck/deck.svelte';
-	import QrShareButton from '$lib/components/ui/qr-share-button.svelte';
+
 	import { getLayoutContext } from '$lib/context/layout.svelte';
-	import * as m from '$lib/paraglide/messages';
 	import { ActivityItem, Deck as DeckSchema } from '$lib/schema';
 
 	const deck = new CoState(DeckSchema, () => page.params.deckId as ID<typeof DeckSchema>, {
@@ -18,28 +17,23 @@
 
 	let completedCards = new SvelteSet<string>();
 
-	const totalCards = $derived(deck?.current.$isLoaded ? deck.current.cards?.length : 0);
-	const completedCount = $derived(completedCards.size);
+	// const totalCards = $derived(deck?.current.$isLoaded ? deck.current.cards?.length : 0);
+	// const completedCount = $derived(completedCards.size);
 
-	const layout = getLayoutContext();
+	const layoutContext = getLayoutContext();
 
 	$effect(() => {
-		layout.title = deck.current?.$isLoaded ? (deck.current.name ?? 'Deck') : 'Deck';
+		layoutContext.title = deck.current?.$isLoaded ? (deck.current.name ?? 'Deck') : 'Deck';
 		// layout.subtitle = totalCards > 0 ? `${completedCount}/${totalCards}` : '';
-		layout.subtitle = deck.current?.$isLoaded ? (deck.current.description ?? '') : '';
+		layoutContext.subtitle = deck.current?.$isLoaded ? (deck.current.description ?? '') : '';
+		layoutContext.qrLink = `${page.url.origin}/add?type=deck&id=${deck.current.$jazz.id}`;
+		return () => {
+			layoutContext.qrLink = null;
+		};
 	});
 </script>
 
 {#if deck.current.$isLoaded}
-	<div class="relative col-span-1 col-start-3 row-span-1 flex w-full justify-end px-2.5 pt-[2ch]">
-		<div class="relative aspect-square w-full">
-			<QrShareButton
-				shareUrl={`${page.url.origin}/add?type=deck&id=${deck.current.$jazz.id}`}
-				viewTransitionName={`qr-${deck.current.$jazz.id}`}
-				class="relative z-100"
-			/>
-		</div>
-	</div>
 	<div class="deck-page-item col-span-3 row-span-2 row-start-2">
 		<Deck
 			class="deck-page-deck"

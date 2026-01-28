@@ -151,7 +151,6 @@
 			</span>
 			<QrShareButton
 				shareUrl={`${page.url.origin}/add?type=deck&id=${item.$jazz.id}`}
-				viewTransitionName={selectedDeckId === item.$jazz.id ? `qr-${item.$jazz.id}` : undefined}
 				class="qr-code-button"
 			/>
 		</div>
