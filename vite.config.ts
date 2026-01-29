@@ -1,3 +1,5 @@
+// import { readFileSync } from 'node:fs'
+// import { dirname, resolve } from 'node:path'
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
@@ -5,7 +7,10 @@ import { SvelteKitPWA } from '@vite-pwa/sveltekit'
 import { playwright } from '@vitest/browser-playwright'
 import svelteEmailTailwind from 'svelte-email-tailwind/vite'
 import type { TailwindConfig } from 'tw-to-css'
+// import type { Plugin } from 'vite'
 import devtoolsJson from 'vite-plugin-devtools-json'
+// import topLevelAwait from 'vite-plugin-top-level-await'
+// import wasm from 'vite-plugin-wasm'
 import { defineConfig } from 'vitest/config'
 
 const emailTailwindConfig: TailwindConfig = {
@@ -51,7 +56,12 @@ const emailTailwindConfig: TailwindConfig = {
 }
 
 export default defineConfig({
+	// optimizeDeps: {
+	// 	exclude: ['cojson-core-wasm']
+	// },
 	plugins: [
+		// topLevelAwait(),
+		// wasm(),
 		tailwindcss(),
 		sveltekit(),
 		devtoolsJson(),
@@ -66,6 +76,10 @@ export default defineConfig({
 		}),
 		svelteEmailTailwind({ tailwindConfig: emailTailwindConfig })
 	],
+	// ssr: {
+	// 	// Ensure WASM-containing packages are bundled by Vite during SSR so our plugin handles them
+	// 	noExternal: ['cojson', 'cojson-core-wasm', 'jazz-tools']
+	// },
 	// server: {
 	// 	host: '0.0.0.0',
 	// 	allowedHosts: ['c167e685251e.ngrok-free.app']

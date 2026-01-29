@@ -2,19 +2,31 @@ import 'jazz-tools/load-edge-wasm'
 import { betterAuth } from 'better-auth'
 import { magicLink } from 'better-auth/plugins'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
+// import { WasmCrypto } from 'cojson/crypto/WasmCrypto'
+// import coJsonEdgeUrl from 'cojson/crypto/WasmCrypto/edge?url'
+// import coJsonUrl from 'cojson/crypto/WasmCrypto?url'
+// import { init as InitWasm, initSync } from 'cojson/crypto/WasmCrypto/edge?url'
 import { jazzPlugin } from 'jazz-tools/better-auth/auth/server'
 import { JazzBetterAuthDatabaseAdapter } from 'jazz-tools/better-auth/database-adapter'
+
+// const main = async () => {
+// 	const coJsonPromise = fetch(coJsonUrl)
+// 	const coJsonEdgePromise = fetch(coJsonEdgeUrl)
+// 	const coJsonWasm = await WebAssembly.instantiate(coJsonPromise)
+// 	const coJsonEdgeWasm = await WebAssembly.instantiate(coJsonEdgePromise)
+// coJsonWasm.exports.WasmCrypto.setInit(coJsonModule.init)
+// coJsonWasmCrypto.WasmCrypto.setInitSync(coJsonModule.initSync)
+// }
+
 import { Resend } from 'resend'
 import { render } from 'svelte/server'
 import { getRequestEvent } from '$app/server'
 import {
 	BASE_URL,
+	BETTER_AUTH_SECRET,
 	GOOGLE_CLIENT_ID,
 	GOOGLE_CLIENT_SECRET,
 	JAZZ_WORKER_ACCOUNT,
-	//  BETTER_AUTH_SECRET,
-	// GOOGLE_CLIENT_ID,
-	//  GOOGLE_CLIENT_SECRET,
 	JAZZ_WORKER_SECRET,
 	RESEND_API_KEY
 } from '$env/static/private'
@@ -27,10 +39,19 @@ const resend = new Resend(RESEND_API_KEY)
 export const auth = betterAuth({
 	appName: 'Stretch Deck',
 	baseURL: BASE_URL,
-	basePath: '/api/auth',
+	secret: BETTER_AUTH_SECRET,
+	// basePath: '/api/auth',
 	advanced: {
-		cookiePrefix: 'stretch'
-		// ipAddressHeaders: ["cf-connecting-ip", "x-real-ip"],
+		defaultCookieAttributes:
+			process.env.NODE_ENV === 'production'
+				? {
+						sameSite: 'lax',
+						secure: true
+						// partitioned: true
+					}
+				: undefined
+		// cookiePrefix: 'stretch'
+		// ipAddressHeaders: ['cf-connecting-ip', 'x-real-ip']
 	},
 	// Add the Jazz plugin
 	plugins: [
@@ -67,16 +88,16 @@ export const auth = betterAuth({
 		accountID: JAZZ_WORKER_ACCOUNT,
 		accountSecret: JAZZ_WORKER_SECRET
 	}),
-	databaseHooks: {
-		user: {
-			create: {
-				async after(user) {
-					// Here we can send a welcome email to the user
-					console.log('User created with Jazz Account ID:', user.accountID)
-				}
-			}
-		}
-	},
+	// databaseHooks: {
+	// 	user: {
+	// 		create: {
+	// 			async after(user) {
+	// 				// Here we can send a welcome email to the user
+	// 				// console.log('User created with Jazz Account ID:', user.accountID)
+	// 			}
+	// 		}
+	// 	}
+	// },
 	socialProviders: {
 		google: {
 			accessType: 'offline',

@@ -3,11 +3,13 @@
 	import { watch } from 'runed';
 	import { MediaQuery, SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { page } from '$app/state';
-	import { deviceOrientation } from '$lib/actions/device-orientation.svelte';
 	import { Card, Snap } from '$lib/components/ui/card';
+	import { getLayoutContext } from '$lib/context/layout.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { Card as CardSchema, Deck as DeckSchema } from '$lib/schema';
 	import { cn } from '$lib/utils';
+
+	const layoutContext = getLayoutContext();
 
 	type Props = {
 		cards?: co.loaded<co.List<typeof CardSchema>> | co.loaded<typeof CardSchema>[];
@@ -119,15 +121,8 @@
 	// Subscribe to device orientation events on mobile
 	$effect(() => {
 		if (!isMobile.current) return;
-		return deviceOrientation.subscribe();
+		return layoutContext.subscribeOrientation();
 	});
-
-	// Request permission on first interaction for iOS
-	function handleFirstInteraction() {
-		if (deviceOrientation.permissionRequired && !deviceOrientation.permissionGranted) {
-			deviceOrientation.requestPermission();
-		}
-	}
 
 	// Store card element references
 	let cardElements = new SvelteMap<number, HTMLElement>();
@@ -251,7 +246,7 @@
 
 		// Use device orientation on mobile, pointer position on desktop
 		if (isMobile.current) {
-			return deviceOrientation.getTilt(tiltRange);
+			return layoutContext.getTilt(tiltRange);
 		}
 
 		// Desktop: only tilt if pointer is over the card
@@ -287,7 +282,6 @@
 	onpointerleave={handlePointerLeave}
 	onclick={handleClick}
 	onkeydown={handleKeydown}
-	ontouchstart={handleFirstInteraction}
 	style:view-transition-name={viewTransitionName}
 >
 	<Snap bind:progress {length} {transitionKey}>

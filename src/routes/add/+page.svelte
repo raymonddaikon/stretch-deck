@@ -5,7 +5,6 @@
 	import { MediaQuery } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { deviceOrientation } from '$lib/actions/device-orientation.svelte';
 	import { Card as CardComponent } from '$lib/components/ui/card';
 	import DeckComponent from '$lib/components/ui/deck/deck.svelte';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
@@ -132,23 +131,12 @@
 	// Subscribe to device orientation events on mobile
 	$effect(() => {
 		if (!isMobile.current) return;
-		return deviceOrientation.subscribe();
+		return layoutContext.subscribeOrientation();
 	});
 
-	// Request permission on first interaction for iOS
-	function handleFirstInteraction() {
-		if (deviceOrientation.permissionRequired && !deviceOrientation.permissionGranted) {
-			deviceOrientation.requestPermission();
-		}
-	}
-
 	// Update tilt values based on device or pointer
-	const currentTiltX = $derived(
-		isMobile.current ? deviceOrientation.getTilt(tiltRange).tiltX : tiltX
-	);
-	const currentTiltY = $derived(
-		isMobile.current ? deviceOrientation.getTilt(tiltRange).tiltY : tiltY
-	);
+	const currentTiltX = $derived(isMobile.current ? layoutContext.getTilt(tiltRange).tiltX : tiltX);
+	const currentTiltY = $derived(isMobile.current ? layoutContext.getTilt(tiltRange).tiltY : tiltY);
 
 	function handlePointerMove(event: PointerEvent) {
 		if (isMobile.current || !cardContainerElement) return;
@@ -253,7 +241,6 @@
 					onpointermove={handlePointerMove}
 					onpointerleave={handlePointerLeave}
 					onclick={handleCardClick}
-					ontouchstart={handleFirstInteraction}
 				>
 					<CardComponent
 						card={previewCard.current}

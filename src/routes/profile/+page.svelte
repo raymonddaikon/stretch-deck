@@ -71,14 +71,14 @@
 		return me.current.profile.username || '';
 	});
 
-	async function signInWithGoogle() {
-		await authClient.signIn.social({
+	function signInWithGoogle() {
+		authClient.signIn.social({
 			provider: 'google',
 			scopes: [
 				'https://www.googleapis.com/auth/userinfo.email',
 				'https://www.googleapis.com/auth/userinfo.profile'
-			],
-			callbackURL: '/profile'
+			]
+			// callbackURL: '/profile'
 		});
 	}
 

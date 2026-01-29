@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { co } from 'jazz-tools';
 	import { MediaQuery, SvelteMap, SvelteSet } from 'svelte/reactivity';
-	import { deviceOrientation } from '$lib/actions/device-orientation.svelte';
 	import { Card } from '$lib/components/ui/card';
+	import { getLayoutContext } from '$lib/context/layout.svelte';
 	import { Card as CardSchema } from '$lib/schema';
 	import ItemGrid from './item-grid.svelte';
+
+	const layoutContext = getLayoutContext();
 
 	type CardGridProps = {
 		cards: co.loaded<co.List<typeof CardSchema>>;
@@ -26,15 +28,8 @@
 	// Subscribe to device orientation events on mobile
 	$effect(() => {
 		if (!isMobile.current) return;
-		return deviceOrientation.subscribe();
+		return layoutContext.subscribeOrientation();
 	});
-
-	// Request permission on first interaction for iOS
-	function handleFirstInteraction() {
-		if (deviceOrientation.permissionRequired && !deviceOrientation.permissionGranted) {
-			deviceOrientation.requestPermission();
-		}
-	}
 
 	// Tilt state for each card in the grid (desktop pointer tracking)
 	let cardTilts = new SvelteMap<string, { tiltX: number; tiltY: number }>();
@@ -84,7 +79,7 @@
 	function getCardTilt(cardId: string) {
 		// On mobile, use device orientation for all visible cards
 		if (isMobile.current) {
-			return deviceOrientation.getTilt(tiltRange);
+			return layoutContext.getTilt(tiltRange);
 		}
 		// On desktop, use pointer-based tilt only for hovered card
 		return cardTilts.get(cardId) ?? { tiltX: 0, tiltY: 0 };
@@ -115,7 +110,6 @@
 				onpointermove={(e) => handleCardPointerMove(item.$jazz.id, e)}
 				onpointerleave={() => handleCardPointerLeave(item.$jazz.id)}
 				onclick={() => handleCardClick(item.$jazz.id)}
-				ontouchstart={handleFirstInteraction}
 			>
 				<Card
 					totalCards={0}

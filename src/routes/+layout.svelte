@@ -2,12 +2,13 @@
 	import './layout.css';
 	import { pwaInfo } from 'virtual:pwa-info';
 	import { type SyncConfig } from 'jazz-tools';
+	import AuthProvider from 'jazz-tools/better-auth/auth/svelte';
 	import { JazzSvelteProvider } from 'jazz-tools/svelte';
 	import { ModeWatcher } from 'mode-watcher';
 	import { onNavigate } from '$app/navigation';
 	import { PUBLIC_JAZZ_API_KEY } from '$env/static/public';
 	import favicon from '$lib/assets/favicon.svg';
-	import AuthProvider from '$lib/auth/auth-provider.svelte';
+	import { authClient } from '$lib/auth/auth.client';
 	import LanguageSwitcher from '$lib/components/ui/language-switcher/language-switcher.svelte';
 	import ProfileButton from '$lib/components/ui/profile-button.svelte';
 	import * as m from '$lib/paraglide/messages';
@@ -20,6 +21,7 @@
 	} from '$lib/paraglide/runtime';
 	import { onAnonymousAccountDiscarded, StretchDeckAccount } from '$lib/schema';
 	import AppHeader from './app-header.svelte';
+	import LayoutProvider from './layout-provider.svelte';
 
 	// Enable cross-document view transitions for smooth page navigation
 	onNavigate((navigation) => {
@@ -91,37 +93,39 @@
 	guestMode={false}
 	AccountSchema={StretchDeckAccount}
 >
-	<AuthProvider>
-		<div class="grid-bg h-svh w-svw"></div>
-
-		<div
-			class="relative grid h-svh w-svw grid-cols-1 grid-rows-1 overflow-x-clip overflow-y-hidden overscroll-contain"
-		>
-			<div class="deck pointer-events-none grid">
-				<AppHeader />
-				<nav
-					class="pointer-events-auto fixed inset-x-0 bottom-0 z-110 flex scrollbar-none flex-row items-end justify-start gap-x-2.5 gap-y-4.5 overflow-x-auto px-2.5 pb-2.5 [grid-area:footer] *:leading-snug md:fixed md:inset-x-auto md:top-0 md:bottom-0 md:left-0 md:h-full md:flex-col md:items-start md:justify-start md:pt-80 md:pb-0"
-				>
-					<ProfileButton />
-					{#each navItems as item}
-						{@render navItem(item)}
-					{/each}
-					<LanguageSwitcher
-						{languages}
-						bind:value={currentLang}
-						onChange={(code: string) => {
-							if (isLocale(code)) setLocale(code);
-						}}
-					/>
-				</nav>
-			</div>
+	<AuthProvider betterAuthClient={authClient as any}>
+		<LayoutProvider>
+			<div class="grid-bg h-svh w-svw"></div>
 
 			<div
-				class="deck-wrapper pointer-events-none grid grid-cols-subgrid grid-rows-subgrid overflow-x-hidden md:overflow-x-visible!"
+				class="relative grid h-svh w-svw grid-cols-1 grid-rows-1 overflow-x-clip overflow-y-hidden overscroll-contain"
 			>
-				{@render children()}
+				<div class="deck pointer-events-none grid">
+					<AppHeader />
+					<nav
+						class="pointer-events-auto fixed inset-x-0 bottom-0 z-110 flex scrollbar-none flex-row items-end justify-start gap-x-2.5 gap-y-4.5 overflow-x-auto px-2.5 pb-2.5 [grid-area:footer] *:leading-snug md:fixed md:inset-x-auto md:top-0 md:bottom-0 md:left-0 md:h-full md:flex-col md:items-start md:justify-start md:pt-80 md:pb-0"
+					>
+						<ProfileButton />
+						{#each navItems as item}
+							{@render navItem(item)}
+						{/each}
+						<LanguageSwitcher
+							{languages}
+							bind:value={currentLang}
+							onChange={(code: string) => {
+								if (isLocale(code)) setLocale(code);
+							}}
+						/>
+					</nav>
+				</div>
+
+				<div
+					class="deck-wrapper pointer-events-none grid grid-cols-subgrid grid-rows-subgrid overflow-x-hidden md:overflow-x-visible!"
+				>
+					{@render children()}
+				</div>
 			</div>
-		</div>
+		</LayoutProvider>
 	</AuthProvider>
 </JazzSvelteProvider>
 
