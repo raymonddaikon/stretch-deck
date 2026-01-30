@@ -1,7 +1,6 @@
-import adapter from '@sveltejs/adapter-cloudflare'
+// import adapter from '@sveltejs/adapter-cloudflare'
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
-
-// import alchemy from 'alchemy/cloudflare/sveltekit'
+import alchemy from 'alchemy/cloudflare/sveltekit'
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -9,7 +8,7 @@ const config = {
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
 
-	kit: { adapter: adapter() }
+	kit: { adapter: alchemy() }
 }
 
 export default config

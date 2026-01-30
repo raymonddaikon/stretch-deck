@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1769740652000,
+      "tag": "0000_supreme_bloodscream",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1769740915716,
+      "tag": "0001_cold_daimon_hellstrom",
+      "breakpoints": true
+    }
+  ]
+}
