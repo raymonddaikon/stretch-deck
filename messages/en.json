@@ -109,5 +109,10 @@
 	"delete_account_confirm": "Delete your account?",
 	"delete_account_disclosure": "This will permanently delete your account and all associated data. This action cannot be undone.",
 	"delete_account_button": "Yes, Delete My Account",
-	"deleting": "Deleting..."
+	"deleting": "Deleting...",
+	"unit_seconds": "seconds",
+	"unit_minutes": "minutes",
+	"unit_reps": "reps",
+	"remove_bg": "Remove BG",
+	"removing_bg": "Removing..."
 }

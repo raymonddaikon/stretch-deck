@@ -12,6 +12,8 @@
 		rowOffset?: number;
 		class?: string;
 		thumbnails?: co.loaded<co.List<co.Image>> | null;
+		/** Preview URLs (data URLs) - alternative to thumbnails for preview mode */
+		previewUrls?: (string | null)[];
 	}
 
 	let {
@@ -20,14 +22,25 @@
 		rowHeight = 80,
 		rowOffset = 6,
 		class: className = '',
-		thumbnails = null
+		thumbnails = null,
+		previewUrls
 	}: Props = $props();
 
 	// Track blob URLs for cleanup
 	let blobUrls: string[] = [];
 
-	// Extract image URLs and placeholder data URLs from thumbnails
+	// Determine if we're in preview mode (using data URLs instead of Jazz thumbnails)
+	const isPreviewMode = $derived(!!previewUrls && previewUrls.length > 0);
+
+	// Extract image URLs and placeholder data URLs from thumbnails or preview URLs
 	let imageData = $derived.by(() => {
+		// Preview mode: use data URLs directly
+		if (isPreviewMode && previewUrls) {
+			const validUrls = previewUrls.filter((url): url is string => url !== null);
+			return { urls: validUrls, placeholders: [] };
+		}
+
+		// Normal mode: extract from Jazz thumbnails
 		if (!thumbnails || thumbnails.length === 0) return { urls: [], placeholders: [] };
 
 		blobUrls.forEach((url) => {

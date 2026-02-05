@@ -9,8 +9,8 @@ import svelteEmailTailwind from 'svelte-email-tailwind/vite'
 import type { TailwindConfig } from 'tw-to-css'
 // import type { Plugin } from 'vite'
 import devtoolsJson from 'vite-plugin-devtools-json'
-import topLevelAwait from 'vite-plugin-top-level-await'
-import wasm from 'vite-plugin-wasm'
+// import topLevelAwait from 'vite-plugin-top-level-await'
+// import wasm from 'vite-plugin-wasm'
 import { defineConfig } from 'vitest/config'
 
 const emailTailwindConfig: TailwindConfig = {
@@ -56,12 +56,13 @@ const emailTailwindConfig: TailwindConfig = {
 }
 
 export default defineConfig({
-	// optimizeDeps: {
-	// 	exclude: ['cojson-core-wasm']
-	// },
+	optimizeDeps: {
+		exclude: ['cojson-core-wasm']
+	},
+	envPrefix: 'PUBLIC_',
 	plugins: [
-		topLevelAwait(),
-		wasm(),
+		// topLevelAwait(),
+		// wasm(),
 		tailwindcss(),
 		sveltekit(),
 		devtoolsJson(),

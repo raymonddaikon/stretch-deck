@@ -344,7 +344,11 @@
 		currentImageDimensions = null;
 	}
 
-	function triggerFileInput(index: number) {
+	async function triggerFileInput(index: number) {
+		// If currently cropping another image, confirm that crop first
+		if (croppingIndex !== null && croppingIndex !== index && tempImages[croppingIndex]) {
+			await confirmCrop(croppingIndex);
+		}
 		fileInputs[index]?.click();
 	}
 
@@ -394,7 +398,7 @@
 
 <div
 	bind:this={containerRef}
-	class={cn('relative h-full w-full overflow-hidden border', className)}
+	class={cn('relative h-full w-full overflow-hidden border-r border-l', className)}
 >
 	<!-- Hidden file inputs -->
 	{#each [0, 1, 2] as index (index)}
@@ -733,7 +737,9 @@
 					onclick={removeAllBackgrounds}
 					disabled={isRemovingBackground}
 				>
-					{isRemovingBackground ? 'Removing...' : `Remove BG [${indicesToProcess.join(',')}]`}
+					{isRemovingBackground
+						? m.removing_bg()
+						: `${m.remove_bg()} [${indicesToProcess.join(',')}]`}
 				</button>
 			{/if}
 		</div>

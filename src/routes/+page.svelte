@@ -36,7 +36,7 @@
 		</p>
 	</div>
 
-	<div class="flex w-full flex-none flex-col items-center gap-2 sm:flex-row">
+	<div class="flex w-full max-w-md flex-none flex-col items-center gap-2 sm:flex-row">
 		<a href="/create-deck" class="button flex-1">Create a Deck</a>
 		<a href="/create-card" class="button flex-1">Create a Card</a>
 	</div>

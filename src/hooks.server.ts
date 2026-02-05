@@ -2,12 +2,12 @@ import type { Handle } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 import { building } from '$app/environment'
-import { createAuth } from '$lib/auth/auth'
+import { createAuth } from '$lib/auth/auth.server'
 import { paraglideMiddleware } from '$lib/paraglide/server'
 
 const handleParaglide: Handle = async ({ event, resolve }) => {
 	// Skip paraglide middleware for API routes to avoid interfering with auth callbacks
-	if (event.url.pathname.startsWith('/api/')) {
+	if (event.url.pathname.includes('/api/')) {
 		return resolve(event)
 	}
 
@@ -26,4 +26,4 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	return svelteKitHandler({ event, resolve, auth, building })
 }
 
-export const handle = sequence(handleParaglide, authHandle)
+export const handle = sequence(authHandle, handleParaglide)

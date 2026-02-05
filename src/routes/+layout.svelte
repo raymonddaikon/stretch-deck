@@ -36,7 +36,6 @@
 	});
 
 	// import 'jazz-tools/inspector/register-custom-element';
-
 	const sync: SyncConfig = {
 		peer: `wss://cloud.jazz.tools/?key=${PUBLIC_JAZZ_API_KEY}`,
 		// peer: 'ws://localhost:4200',

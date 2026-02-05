@@ -1,4 +1,4 @@
-// import adapter from '@sveltejs/adapter-cloudflare'
+import adapter from '@sveltejs/adapter-cloudflare'
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
 import alchemy from 'alchemy/cloudflare/sveltekit'
 

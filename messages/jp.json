@@ -109,5 +109,10 @@
 	"delete_account_confirm": "アカウントを削除しますか？",
 	"delete_account_disclosure": "アカウントと関連するすべてのデータが完全に削除されます。この操作は元に戻せません。",
 	"delete_account_button": "はい、アカウントを削除します",
-	"deleting": "削除中..."
+	"deleting": "削除中...",
+	"unit_seconds": "秒",
+	"unit_minutes": "分",
+	"unit_reps": "回",
+	"remove_bg": "背景削除",
+	"removing_bg": "削除中..."
 }

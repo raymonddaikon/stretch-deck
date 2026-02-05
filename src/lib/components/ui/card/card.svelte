@@ -14,6 +14,18 @@
 	import QrShareButton from '../qr-share-button.svelte';
 	import CardHeader from './card-header.svelte';
 
+	/** Raw card data for preview mode (no Jazz schema required) */
+	interface PreviewCardData {
+		name: string;
+		areas: string[];
+		reps?: number;
+		units?: string;
+		sets?: number;
+		description?: string;
+		/** Data URLs for thumbnail images */
+		thumbnailUrls?: (string | null)[];
+	}
+
 	interface Props {
 		index: number;
 		progress: number;
@@ -36,8 +48,9 @@
 		// Spring physics options
 		springOptions?: { stiffness?: number; damping?: number; precision?: number };
 		class?: string;
-		// Card data
-		card: co.loaded<typeof CardSchema>;
+		// Card data - either Jazz schema OR raw preview data
+		card?: co.loaded<typeof CardSchema>;
+		previewData?: PreviewCardData;
 		aligned?: boolean;
 		// View transition name for same-document view transitions
 		viewTransitionName?: string;
@@ -68,9 +81,21 @@
 		springOptions = {},
 		class: className,
 		card,
+		previewData,
 		aligned = false,
 		viewTransitionName
 	}: Props = $props();
+
+	// Determine if we're in preview mode (no Jazz card, just raw data)
+	const isPreviewMode = $derived(!card && !!previewData);
+
+	// Unified accessors for card data - works with both Jazz schema and preview data
+	const cardName = $derived(card?.name ?? previewData?.name ?? '');
+	const cardAreas = $derived(card?.areas ?? previewData?.areas ?? []);
+	const cardReps = $derived(card?.reps ?? previewData?.reps);
+	const cardUnits = $derived(card?.units ?? previewData?.units ?? 'reps');
+	const cardSets = $derived(card?.sets ?? previewData?.sets);
+	const cardDescription = $derived(card?.description ?? previewData?.description ?? '');
 
 	// Merge spring options with defaults
 	const springConfig = { ...defaultSpringOptions, ...springOptions };
@@ -312,7 +337,8 @@
 				>
 			>[]
 		>();
-		if (card.activity?.$isLoaded) {
+		// Skip activity loading in preview mode
+		if (!isPreviewMode && card?.activity?.$isLoaded) {
 			for (const entry of Object.values(card.activity.perAccount)) {
 				if (entry.value.$isLoaded) {
 					for (const ac of entry.all) {
@@ -401,25 +427,28 @@
 	});
 
 	const canEdit = $derived(
-		card.$jazz.owner.myRole() &&
-			card.$jazz.owner.myRole() !== 'reader' &&
-			card.$jazz.owner.myRole() !== 'readerInvite'
+		!isPreviewMode &&
+			card?.$jazz.owner.myRole() &&
+			card?.$jazz.owner.myRole() !== 'reader' &&
+			card?.$jazz.owner.myRole() !== 'readerInvite'
 	);
 
-	// Edit URL with return path
+	// Edit URL with return path (not available in preview mode)
 	const editUrl = $derived(
-		`/edit/card/${card.$jazz.id}?returnTo=${encodeURIComponent(page.url.pathname + page.url.search)}`
+		card
+			? `/edit/card/${card.$jazz.id}?returnTo=${encodeURIComponent(page.url.pathname + page.url.search)}`
+			: ''
 	);
 
-	// Share URL for QR code - uses /add route with query params for invite flow
-	const shareUrl = $derived(`${page.url.origin}/add?type=card&id=${card.$jazz.id}`);
+	// Share URL for QR code - uses /add route with query params for invite flow (not available in preview mode)
+	const shareUrl = $derived(card ? `${page.url.origin}/add?type=card&id=${card.$jazz.id}` : '');
 
 	// Remove confirmation state
 	let showRemoveConfirm = $state(false);
 	const layoutContext = getLayoutContext();
 
 	async function handleRemove() {
-		if (!layoutContext.me.current.$isLoaded) {
+		if (isPreviewMode || !card || !layoutContext.me.current.$isLoaded) {
 			return;
 		}
 		const profile = await layoutContext.me.current.profile.$jazz.ensureLoaded({
@@ -441,7 +470,7 @@
 		class:pointer-events-none={isFlipped}
 	>
 		<div
-			class="relative z-1 box-border grid h-full w-full grid-cols-6 grid-rows-[auto_auto_auto_auto_auto_1fr] gap-1 border-4 border-double border-border p-2"
+			class="relative z-1 box-border grid h-full w-full grid-cols-6 grid-rows-[auto_auto_auto_auto_auto_1fr] border-4 border-double border-border p-2"
 		>
 			<header
 				class="relative col-span-6 row-span-1 flex items-center justify-start divide-x divide-border border border-border text-base"
@@ -460,14 +489,21 @@
 					</div>
 				</div>
 				<h3 class="card-title flex-1 text-left text-black uppercase select-none">
-					{card.name}
+					{cardName}
 				</h3>
 			</header>
-			<section class="col-span-6 row-span-5 grid grid-cols-subgrid grid-rows-subgrid gap-1">
+			<section class="col-span-6 row-span-5 grid grid-cols-subgrid grid-rows-subgrid">
 				<div
 					class="card-header-container relative col-span-6 row-span-1 aspect-3/2 w-full overflow-hidden transform-flat"
 				>
-					{#if card.thumbnails.$isLoaded}
+					{#if isPreviewMode && previewData?.thumbnailUrls}
+						<!-- Preview mode: show images from data URLs -->
+						<CardHeader
+							{tiltY}
+							previewUrls={previewData.thumbnailUrls}
+							class="h-full w-full object-cover"
+						/>
+					{:else if card?.thumbnails.$isLoaded}
 						<CardHeader {tiltY} thumbnails={card.thumbnails} class="h-full w-full object-cover" />
 					{/if}
 					{#if isHolographic}
@@ -485,7 +521,7 @@
 							>{m.areas()}:</span
 						>
 						<div class="flex flex-none gap-1 p-2">
-							{#each card.areas as area (area)}
+							{#each cardAreas as area (area)}
 								<span
 									class="flex flex-none bg-foreground px-1 align-baseline text-sm font-normal text-black uppercase text-box-trim"
 									>{area}</span
@@ -496,19 +532,19 @@
 					<div class="col-span-6 row-span-1 flex h-full w-full justify-between p-2">
 						<span class="flex flex-none text-sm font-normal text-black uppercase">{m.reps()}:</span>
 						<span class="flex flex-none text-sm font-normal text-black uppercase tabular-nums"
-							>{card.units !== 'reps' ? `${card.reps} ${card.units}` : card.reps}</span
+							>{cardUnits !== 'reps' ? `${cardReps} ${cardUnits}` : cardReps}</span
 						>
 					</div>
 					<div class="col-span-6 row-span-1 flex h-full w-full justify-between p-2">
 						<span class="flex flex-none text-sm font-normal text-black uppercase">{m.sets()}:</span>
 						<span class="flex flex-none text-sm font-normal text-black uppercase tabular-nums"
-							>{card.sets}</span
+							>{cardSets}</span
 						>
 					</div>
 					<div class="col-span-6 row-span-1 flex h-full w-full flex-col items-start gap-1 p-2">
 						<span class="inline text-sm font-normal text-black uppercase">{m.description()}:</span>
 						<p class="inline text-left text-sm leading-4 font-normal text-black">
-							{card.description}
+							{cardDescription}
 						</p>
 					</div>
 				</div>
@@ -523,49 +559,39 @@
 			class="relative z-1 box-border grid h-full w-full grid-cols-6 grid-rows-[auto_1fr] border-4 border-double border-border"
 		>
 			<section class="col-span-6 row-span-1 flex">
-				<QrShareButton {shareUrl} class="w-1/3 flex-none border-t-0 border-l-0" />
-				<div class="flex flex-1 flex-col border-l">
+				{#if !isPreviewMode}
+					<QrShareButton {shareUrl} class="w-1/3 flex-none border-t-0 border-l-0" />
+				{/if}
+				<div class="flex flex-1 flex-col" class:border-l={!isPreviewMode}>
 					<span
 						class="flex-none bg-foreground px-1.5 text-left text-sm text-black uppercase select-none"
 						>{m.title()}</span
 					>
 					<h3 class="flex-1 px-1 text-left text-base text-black uppercase select-none">
-						{card.name}
+						{cardName}
 					</h3>
-					<div class="flex flex-none flex-row gap-px">
-						{#if canEdit}
-							<a
-								href={editUrl}
-								class="button pointer-events-auto flex h-5 flex-1 items-center justify-start px-2 py-0 text-left transition-colors"
-								aria-label={m.edit_card()}
-							>
-								{m.edit_card()}
-							</a>
-						{:else}
-							<button
-								class="button-destructive pointer-events-auto flex h-5 flex-1 items-center justify-start px-2 py-0 text-left transition-colors"
-								onclick={() => {
-									showRemoveConfirm = true;
-								}}
-							>
-								{m.remove()}
-							</button>
-						{/if}
-						<!-- <button
-							class="pointer-events-auto flex flex-1 items-center justify-start bg-foreground px-1.5 text-black uppercase transition-colors hover:bg-muted"
-							onclick={() => {
-								if (card.activity.$isLoaded) {
-									card.activity.$jazz.push(
-										ActivityItem.create({
-											completed: new Date()
-										})
-									);
-								}
-							}}
-						>
-							Complete
-						</button> -->
-					</div>
+					{#if !isPreviewMode}
+						<div class="flex flex-none flex-row gap-px">
+							{#if canEdit}
+								<a
+									href={editUrl}
+									class="button pointer-events-auto flex h-5 flex-1 items-center justify-start px-2 py-0 text-left transition-colors"
+									aria-label={m.edit_card()}
+								>
+									{m.edit_card()}
+								</a>
+							{:else}
+								<button
+									class="button-destructive pointer-events-auto flex h-5 flex-1 items-center justify-start px-2 py-0 text-left transition-colors"
+									onclick={() => {
+										showRemoveConfirm = true;
+									}}
+								>
+									{m.remove()}
+								</button>
+							{/if}
+						</div>
+					{/if}
 				</div>
 			</section>
 

@@ -568,7 +568,7 @@
 					{@const cardId = item.$jazz.id}
 					{@const tilt = getCardTilt(cardId)}
 					{@const cardIsSelected = isSelected(cardId)}
-					<div class="flex h-full w-full items-center justify-center">
+					<div class="flex h-full w-full items-center justify-center pt-4">
 						<button
 							class="card-grid-item relative h-full w-full overflow-visible rounded-md transition-all focus-visible:outline-none!"
 							class:ring-2={highlighted}

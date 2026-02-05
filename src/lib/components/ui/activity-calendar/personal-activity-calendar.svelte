@@ -181,17 +181,17 @@
 		class="flex-none bg-transparent"
 		headerClass="pt-1"
 	>
-		{#snippet day({ day: dateValue, outsideMonth })}
-			{@const level = getActivityLevel(dateValue)}
-			{@const colorClass = getActivityColorClass(level)}
-			<CalendarComponents.Day
-				class={cn(
-					colorClass,
-					level > 0 && 'text-green-950 dark:text-green-50',
-					level > 2 && 'text-white dark:text-green-50'
-				)}
-			/>
-		{/snippet}
+			{#snippet day({ day: dateValue, outsideMonth })}
+				{@const level = getActivityLevel(dateValue)}
+				{@const colorClass = getActivityColorClass(level)}
+				<CalendarComponents.Day
+					class={cn(
+						colorClass,
+						level > 0 && 'text-green-950 dark:text-green-50',
+						level > 2 && 'text-white dark:text-green-50'
+					)}
+				/>
+			{/snippet}
 	</Calendar>
 
 	<div class="flex flex-1 flex-col gap-1 overflow-y-hidden bg-transparent">

@@ -145,66 +145,69 @@
 		</div>
 	{:else}
 		<!-- Authenticated user: show profile -->
-		<div
-			class="pointer-events-auto col-span-3 row-span-2 row-start-1 flex h-full flex-col items-start overflow-y-auto px-[1ch] pt-20 pb-[2ch] md:row-span-3 md:px-35 md:pt-30"
-		>
-			<!-- Profile Header -->
-			<div class="flex flex-none flex-row flex-wrap items-center gap-3">
-				<Avatar.Root class={cn('flex-none', username ? 'size-15' : 'size-10')}>
-					{#if me.current.profile.imageUrl}
-						<Avatar.Image
-							referrerpolicy="no-referrer"
-							src={me.current.profile.imageUrl}
-							alt={displayName}
-						/>
-					{/if}
-					<Avatar.Fallback class="bg-muted text-xl">
-						{#if displayName}
-							{displayName.charAt(0).toUpperCase()}
-						{:else}
-							<ProfileIcon class="size-6" />
+		<div class="relative col-span-3 row-span-3 row-start-1">
+			<div
+				class="pointer-events-auto flex h-full flex-col items-start overflow-y-auto px-[1ch] pt-20 pb-[2ch] md:items-center md:px-35 md:pt-30"
+			>
+				<!-- Profile Header -->
+				<div
+					class="flex w-full flex-none flex-row flex-wrap items-center gap-3 md:max-w-[calc(100svh-18rem)]"
+				>
+					<Avatar.Root class={cn('flex-none', username ? 'size-15' : 'size-10')}>
+						{#if me.current.profile.imageUrl}
+							<Avatar.Image
+								referrerpolicy="no-referrer"
+								src={me.current.profile.imageUrl}
+								alt={displayName}
+							/>
 						{/if}
-					</Avatar.Fallback>
-				</Avatar.Root>
-				<div class="flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-0">
-					<h2 class="h-5 w-full truncate text-base font-medium text-black">
-						{displayName}
-					</h2>
-					{#if username}
-						<p class="text-sm leading-5 text-black/60">@{username}</p>
-					{/if}
-					{#if me.current.profile.email}
-						<p class="w-full truncate text-sm leading-5 text-black/60">
-							{me.current.profile.email}
-						</p>
-					{/if}
-				</div>
-				<!-- Stats -->
-				<div class="flex h-full flex-none flex-row items-start gap-4">
-					<div class="flex h-full flex-col items-start gap-0">
-						<span class="h-5 text-base font-semibold text-black">{deckCount}</span>
-						<span class="text-sm leading-5 text-black/60">{m.decks()}</span>
+						<Avatar.Fallback class="bg-muted text-xl">
+							{#if displayName}
+								{displayName.charAt(0).toUpperCase()}
+							{:else}
+								<ProfileIcon class="size-6" />
+							{/if}
+						</Avatar.Fallback>
+					</Avatar.Root>
+					<div class="flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-0">
+						<h2 class="h-5 w-full truncate text-base font-medium text-black">
+							{displayName}
+						</h2>
+						{#if username}
+							<p class="text-sm leading-5 text-black/60">@{username}</p>
+						{/if}
+						{#if me.current.profile.email}
+							<p class="w-full truncate text-sm leading-5 text-black/60">
+								{me.current.profile.email}
+							</p>
+						{/if}
 					</div>
-					<div class="flex h-full flex-col items-start gap-0">
-						<span class="h-5 text-base font-semibold text-black"> {cardCount}</span>
-						<span class="text-sm leading-5 text-black/60">{m.cards()}</span>
-					</div>
-					<!-- <div class="flex flex-col items-start gap-0">
+					<!-- Stats -->
+					<div class="flex h-full flex-none flex-row items-start gap-4">
+						<div class="flex h-full flex-col items-start gap-0">
+							<span class="h-5 text-base font-semibold text-black">{deckCount}</span>
+							<span class="text-sm leading-5 text-black/60">{m.decks()}</span>
+						</div>
+						<div class="flex h-full flex-col items-start gap-0">
+							<span class="h-5 text-base font-semibold text-black"> {cardCount}</span>
+							<span class="text-sm leading-5 text-black/60">{m.cards()}</span>
+						</div>
+						<!-- <div class="flex flex-col items-start gap-0">
 					<span class="text-base font-semibold text-black"> {friendCount}</span>
 					<span class="text-xs text-black/60">{m.friends()}</span>
 				</div> -->
+					</div>
 				</div>
-			</div>
 
-			<!-- Activity Calendar -->
-			<div class="flex flex-none flex-col gap-1">
-				<div class="overflow-hidden rounded">
-					<PersonalActivityCalendar class="w-full max-w-105" />
+				<!-- Activity Calendar -->
+				<div class="flex min-h-0 flex-none flex-col gap-1">
+					<PersonalActivityCalendar
+						class="w-full max-w-[calc(100svh-20rem)] md:max-w-[calc(100svh-18rem)]"
+					/>
 				</div>
-			</div>
 
-			<!-- Friends -->
-			<!-- <div class="flex flex-none flex-col gap-1">
+				<!-- Friends -->
+				<!-- <div class="flex flex-none flex-col gap-1">
 				<h3 class="text-xs font-medium text-black">{m.friends()}</h3>
 				{#if me.current.profile.friends.$isLoaded && me.current.profile.friends.length > 0}
 					<div class="flex flex-wrap gap-1">
@@ -231,44 +234,50 @@
 				{/if}
 			</div> -->
 
-			<!-- Sign Out -->
-			<div class="flex flex-none pt-2">
-				<button onclick={signOut} class="button">
-					{m.sign_out()}
-				</button>
-				<!-- Delete Account -->
-				<!-- <div class="flex flex-none flex-col gap-2 pt-4">
-					{#if showDeleteConfirm}
-						<div class="flex flex-col gap-2 rounded border border-red-200 bg-red-50 p-3">
-							<h3 class="text-sm font-medium text-red-800">{m.delete_account_confirm()}</h3>
-							<p class="text-xs text-red-600">{m.delete_account_disclosure()}</p>
-							<div class="flex gap-2">
-								<button
-									onclick={deleteAccount}
-									disabled={isDeleting}
-									class="rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700 disabled:opacity-50"
-								>
-									{isDeleting ? m.deleting() : m.delete_account_button()}
-								</button>
-								<button
-									onclick={() => (showDeleteConfirm = false)}
-									disabled={isDeleting}
-									class="button"
-								>
-									{m.cancel()}
-								</button>
-							</div>
-						</div>
-					{:else}
-						<button
-							onclick={() => (showDeleteConfirm = true)}
-							class="w-fit text-xs text-red-600 hover:text-red-800 hover:underline"
-						>
-							{m.delete_account()}
-						</button>
-					{/if}
-				</div> -->
+				<!-- Sign Out & Delete Account -->
+				<div
+					class="flex w-full flex-none flex-col gap-2 pt-2 md:max-w-[calc(100svh-18rem)] md:flex-row"
+				>
+					<button onclick={signOut} class="button flex-1">
+						{m.sign_out()}
+					</button>
+					<button onclick={() => (showDeleteConfirm = true)} class="button-destructive flex-1">
+						{m.delete_account()}
+					</button>
+				</div>
 			</div>
+
+			<!-- Delete Account Confirmation Overlay -->
+			{#if showDeleteConfirm}
+				<div
+					class="pointer-events-auto absolute top-20 right-0 bottom-[2ch] left-[1ch] z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm md:top-30 md:left-35"
+				>
+					<div class="flex max-w-4/5 flex-col gap-4 p-6">
+						<p class="text-base font-medium text-black">
+							{m.delete_account_confirm()}
+						</p>
+						<p class="text-sm font-medium text-black">
+							{m.delete_account_disclosure()}
+						</p>
+						<div class="flex gap-2">
+							<button
+								class="button flex-1 rounded-md transition-colors"
+								onclick={() => (showDeleteConfirm = false)}
+								disabled={isDeleting}
+							>
+								{m.cancel()}
+							</button>
+							<button
+								class="button-destructive flex-1 transition-colors"
+								onclick={deleteAccount}
+								disabled={isDeleting}
+							>
+								{isDeleting ? m.deleting() : m.delete_account_button()}
+							</button>
+						</div>
+					</div>
+				</div>
+			{/if}
 		</div>
 	{/if}
 {/if}
