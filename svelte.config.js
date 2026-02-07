@@ -1,6 +1,8 @@
 import adapter from '@sveltejs/adapter-cloudflare'
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
-import alchemy from 'alchemy/cloudflare/sveltekit'
+
+// Need to use the default adapter because the alchemy adapter doesn't work with wasm
+// import alchemy from 'alchemy/cloudflare/sveltekit'
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -8,7 +10,7 @@ const config = {
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
 
-	kit: { adapter: alchemy() }
+	kit: { adapter: adapter() }
 }
 
 export default config

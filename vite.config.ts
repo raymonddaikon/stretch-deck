@@ -71,6 +71,7 @@ export default defineConfig({
 			outdir: './src/lib/paraglide'
 		}),
 		SvelteKitPWA({
+			base: '/',
 			workbox: {
 				maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB
 				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}']

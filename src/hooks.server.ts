@@ -1,3 +1,4 @@
+import 'jazz-tools/load-edge-wasm'
 import type { Handle } from '@sveltejs/kit'
 import { sequence } from '@sveltejs/kit/hooks'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
@@ -7,7 +8,7 @@ import { paraglideMiddleware } from '$lib/paraglide/server'
 
 const handleParaglide: Handle = async ({ event, resolve }) => {
 	// Skip paraglide middleware for API routes to avoid interfering with auth callbacks
-	if (event.url.pathname.includes('/api/')) {
+	if (event.url.pathname.startsWith('/api/auth')) {
 		return resolve(event)
 	}
 

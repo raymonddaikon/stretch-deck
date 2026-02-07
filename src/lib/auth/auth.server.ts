@@ -185,7 +185,7 @@ function createAuth(event?: RequestEvent) {
 					// other server plugins
 					sveltekitCookies(getRequestEvent)
 				],
-				database: drizzleAdapter({} as D1Database, {
+				database: drizzleAdapter(db as D1Database, {
 					provider: 'sqlite',
 					usePlural: true,
 					debugLogs: true
@@ -225,17 +225,17 @@ function createAuth(event?: RequestEvent) {
 					}
 				}
 			}
-		),
+		)
 		//Only add database adapter for CLI schema generation
-		...(event?.platform?.env
-			? {}
-			: {
-					database: drizzleAdapter({} as D1Database, {
-						provider: 'sqlite',
-						usePlural: true,
-						debugLogs: true
-					})
-				})
+		// ...(event?.platform?.env
+		// 	? {}
+		// 	: {
+		// 			database: drizzleAdapter({} as D1Database, {
+		// 				provider: 'sqlite',
+		// 				usePlural: true,
+		// 				debugLogs: true
+		// 			})
+		// 		})
 	})
 }
 
