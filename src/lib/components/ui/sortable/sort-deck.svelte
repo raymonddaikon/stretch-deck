@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PointerActivationConstraints } from '@dnd-kit/dom';
 	import {
 		DragDropProvider,
 		DragOverlay,
@@ -40,29 +41,17 @@
 		class: className
 	}: SortDeckProps = $props();
 
-	// Local state for the card order - initialized from props
-	let orderedCards = $state<
-		{
-			type: 'stretch';
-			$jazz: { id: string };
-			areas: string[];
-			thumbnails: any[];
-			name: string;
-			shareSecret: string;
-			description: string;
-			reps: number;
-			units: string;
-			sets: number;
-			activity: any[];
-			creator: any;
-		}[]
-	>(cards.map((card) => (card.$isLoaded ? card?.toJSON() : null)));
+	// Local state for the card order - synced from props, reorderable during drag
+	let orderedCards: ReturnType<co.loaded<typeof CardSchema>['toJSON']>[] = $state([]);
+
+	// Update orderedCards when cards prop changes (e.g. switching to sort mode)
+	$effect(() => {
+		orderedCards = cards.map((card) => (card.$isLoaded ? card.toJSON() : null)).filter(Boolean);
+	});
 
 	const sensors = [
 		PointerSensor.configure({
-			activationConstraints: {
-				distance: { value: 8 }
-			}
+			activationConstraints: [new PointerActivationConstraints.Distance({ value: 8 })]
 		}),
 		KeyboardSensor
 	];
@@ -76,16 +65,11 @@
 		return newArray;
 	}
 
-	// function handleDragStart(event: any, manager: any) {
-	// 	isDragging = true;
-	// }
-
 	function handleDragOver(event: any, manager: any) {
 		const { source, target } = manager.dragOperation;
 
 		if (!source || !target) return;
 
-		// Check if both are sortables with our group
 		const sourceSortable = source.sortable;
 		const targetSortable = target.sortable;
 
@@ -98,14 +82,13 @@
 		if (sourceIndex === -1 || targetIndex === -1) return;
 		if (sourceIndex === targetIndex) return;
 
-		// Reorder the cards
-
+		// Prevent OptimisticSortingPlugin from also reordering the DOM
+		// (we handle reordering via Svelte state)
+		event.preventDefault();
 		orderedCards = arrayMove(orderedCards, sourceIndex, targetIndex);
 	}
 
 	function handleDragEnd(event: any, manager: any) {
-		// Notify parent of the final order
-		// cards.$jazz.applyDiff()
 		onOrderChange?.(orderedCards);
 	}
 </script>

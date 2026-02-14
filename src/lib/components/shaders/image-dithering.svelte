@@ -25,7 +25,8 @@
 			type: '8x8',
 			size: 2,
 			colorSteps: 2,
-			originalColors: false
+			originalColors: false,
+			inverted: false
 		}
 	} as const;
 
@@ -42,7 +43,8 @@
 			type: '2x2',
 			size: 3,
 			colorSteps: 1,
-			originalColors: true
+			originalColors: true,
+			inverted: false
 		}
 	} as const;
 
@@ -59,7 +61,8 @@
 			type: 'random',
 			size: 1,
 			colorSteps: 1,
-			originalColors: false
+			originalColors: false,
+			inverted: false
 		}
 	} as const;
 
@@ -76,7 +79,8 @@
 			type: '8x8',
 			size: 2,
 			colorSteps: 5,
-			originalColors: true
+			originalColors: true,
+			inverted: false
 		}
 	} as const;
 
@@ -126,6 +130,7 @@
 		offsetY = defaultPreset.params.offsetY,
 		worldWidth = defaultPreset.params.worldWidth,
 		worldHeight = defaultPreset.params.worldHeight,
+		inverted = defaultPreset.params.inverted,
 
 		// Pass-through props
 		children,
@@ -152,7 +157,8 @@
 		u_originX: originX,
 		u_originY: originY,
 		u_worldWidth: worldWidth,
-		u_worldHeight: worldHeight
+		u_worldHeight: worldHeight,
+		u_inverted: inverted
 	} satisfies ImageDitheringUniforms);
 </script>
 

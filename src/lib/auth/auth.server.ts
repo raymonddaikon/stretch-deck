@@ -7,7 +7,6 @@ import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { withCloudflare } from 'better-auth-cloudflare'
 import { drizzle } from 'drizzle-orm/d1'
 import { jazzPlugin } from 'jazz-tools/better-auth/auth/server'
-// import { JazzBetterAuthDatabaseAdapter } from 'jazz-tools/better-auth/database-adapter'
 import { Resend } from 'resend'
 import { render } from 'svelte/server'
 import { getRequestEvent } from '$app/server'
@@ -16,11 +15,8 @@ import {
 	BETTER_AUTH_SECRET,
 	GOOGLE_CLIENT_ID,
 	GOOGLE_CLIENT_SECRET,
-	// JAZZ_WORKER_ACCOUNT,
-	// JAZZ_WORKER_SECRET,
 	RESEND_API_KEY
 } from '$env/static/private'
-// import { PUBLIC_JAZZ_API_KEY } from '$env/static/public'
 import MagicLink from '$lib/emails/magic-link.svelte'
 
 import { schema } from '../../db'
@@ -113,8 +109,9 @@ import { schema } from '../../db'
 function createAuth(event?: RequestEvent) {
 	// Use actual DB for runtime, empty object for CLI
 	const resend = new Resend(RESEND_API_KEY)
+	// Check for the actual D1 database binding, not just env
 	const db = event?.platform?.env
-		? drizzle(event?.platform?.env.DB, { schema, logger: true })
+		? drizzle(event?.platform?.env?.DB, { schema, logger: true })
 		: ({} as any)
 
 	return betterAuth({
@@ -225,17 +222,17 @@ function createAuth(event?: RequestEvent) {
 					}
 				}
 			}
-		)
+		),
 		//Only add database adapter for CLI schema generation
-		// ...(event?.platform?.env
-		// 	? {}
-		// 	: {
-		// 			database: drizzleAdapter({} as D1Database, {
-		// 				provider: 'sqlite',
-		// 				usePlural: true,
-		// 				debugLogs: true
-		// 			})
-		// 		})
+		...(event?.platform?.env
+			? {}
+			: {
+					database: drizzleAdapter({} as D1Database, {
+						provider: 'sqlite',
+						usePlural: true,
+						debugLogs: true
+					})
+				})
 	})
 }
 

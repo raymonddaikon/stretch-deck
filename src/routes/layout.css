@@ -153,6 +153,38 @@
 	animation-timing-function: ease-in-out;
 }
 
+/* Suppress root cross-fade during internal deck preview transitions */
+html:active-view-transition-type(deck-preview-transition) {
+	&:root {
+		view-transition-name: none;
+	}
+}
+
+/* Suppress cross-fade for deck editor containers during preview transitions.
+   The deck inside handles the morphing animation, so the containers should
+   appear/disappear instantly without fading. */
+html:active-view-transition-type(deck-preview-transition) {
+	&::view-transition-old(deck-editor-container),
+	&::view-transition-new(deck-editor-container),
+	&::view-transition-old(deck-preview-page),
+	&::view-transition-new(deck-preview-page) {
+		animation: none;
+	}
+}
+
+/* Fade animations for buttons and grid during deck preview transitions */
+html:active-view-transition-type(deck-preview-transition) {
+	&::view-transition-old(preview-buttons),
+	&::view-transition-new(preview-buttons),
+	&::view-transition-old(editor-form),
+	&::view-transition-new(editor-form),
+	&::view-transition-old(card-grid-area),
+	&::view-transition-new(card-grid-area) {
+		animation-duration: 0.3s;
+		animation-timing-function: ease-in-out;
+	}
+}
+
 /* Card transitions - smooth movement between pages */
 ::view-transition-old(card-*),
 ::view-transition-new(card-*) {

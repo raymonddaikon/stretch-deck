@@ -3,6 +3,7 @@
 	import { SpatialMenu } from 'melt/builders';
 	import { watch } from 'runed';
 	import { type Snippet, tick } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { Card as CardSchema, Deck as DeckSchema } from '$lib/schema';
 	import { cn, fuzzysearch } from '$lib/utils';
 
@@ -53,7 +54,7 @@
 		totalItems?: number;
 		itemsShown?: number;
 		/** Set of visible item IDs (items currently in viewport) */
-		visibleIds?: Set<string>;
+		visibleIds?: SvelteSet<string>;
 	};
 
 	let {
@@ -72,7 +73,7 @@
 		scrollIndex = $bindable(0),
 		totalItems = $bindable(0),
 		itemsShown = $bindable(0),
-		visibleIds = $bindable(new Set<string>())
+		visibleIds = new SvelteSet<string>()
 	}: GridProps<any> = $props();
 
 	let gridWrapper: HTMLElement | undefined = $state();
@@ -86,44 +87,36 @@
 		}
 	);
 
+	// rAF-throttled version of updateItemsShown to avoid per-frame DOM measurement
+	let pendingUpdate = false;
+	function scheduleUpdateItemsShown() {
+		if (pendingUpdate) return;
+		pendingUpdate = true;
+		requestAnimationFrame(() => {
+			pendingUpdate = false;
+			updateItemsShown();
+		});
+	}
+
 	// Recalculate on mount, when items change, or when containers become available
 	watch(
-		() => filtered.length,
+		() => [filtered.length, gridWrapper, outerContainer],
 		() => {
-			// Depend on filtered.length and containers to recalculate when items change or element mounts
 			if (!gridWrapper || !outerContainer) return;
-
-			// Use double requestAnimationFrame to ensure layout is complete
 			tick().then(() => {
 				updateItemsShown();
 			});
-			// requestAnimationFrame(() => {
-			// 	requestAnimationFrame(() => {});
-			// });
 		}
 	);
-	// $effect() => {
-	// 	// Depend on filtered.length and containers to recalculate when items change or element mounts
-	// 	filtered.length;
-	// 	if (!gridWrapper || !outerContainer) return;
-
-	// 	// Use double requestAnimationFrame to ensure layout is complete
-	// 	requestAnimationFrame(() => {
-	// 		requestAnimationFrame(() => {
-	// 			updateItemsShown();
-	// 		});
-	// 	});
-	// });
 
 	// Attach scroll listener to the correct container based on screen size
 	$effect(() => {
 		if (!outerContainer) return;
 
-		const handleScroll = () => updateItemsShown();
-		outerContainer.addEventListener('scroll', handleScroll);
+		outerContainer.addEventListener('scroll', scheduleUpdateItemsShown);
 
 		return () => {
-			outerContainer?.removeEventListener('scroll', handleScroll);
+			outerContainer?.removeEventListener('scroll', scheduleUpdateItemsShown);
 		};
 	});
 
@@ -131,13 +124,9 @@
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
-		const handleResize = () => {
-			updateItemsShown();
-		};
-
-		window.addEventListener('resize', handleResize);
+		window.addEventListener('resize', scheduleUpdateItemsShown);
 		return () => {
-			window.removeEventListener('resize', handleResize);
+			window.removeEventListener('resize', scheduleUpdateItemsShown);
 		};
 	});
 
@@ -152,11 +141,12 @@
 		if (gridItems.length === 0) {
 			itemsShown = 0;
 			scrollIndex = 0;
-			visibleIds = new Set();
+			visibleIds.clear();
 			return;
 		}
 
 		const isMobile = window.matchMedia('(max-width: 767px)').matches;
+		// Track which IDs should be visible - we'll diff against current set
 		const newVisibleIds = new Set<string>();
 
 		if (isMobile) {
@@ -234,7 +224,18 @@
 			scrollIndex = closestIndex;
 		}
 
-		visibleIds = newVisibleIds;
+		// Efficiently update the SvelteSet: remove items no longer visible, add new ones
+		// This avoids replacing the entire set object which would trigger unnecessary re-renders
+		for (const id of visibleIds) {
+			if (!newVisibleIds.has(id)) {
+				visibleIds.delete(id);
+			}
+		}
+		for (const id of newVisibleIds) {
+			if (!visibleIds.has(id)) {
+				visibleIds.add(id);
+			}
+		}
 	}
 
 	const spatialMenu = new SpatialMenu({
@@ -284,7 +285,7 @@
 	{#if filtered.length}
 		<div
 			bind:this={gridWrapper}
-			onscroll={updateItemsShown}
+			onscroll={scheduleUpdateItemsShown}
 			class="grid-wrapper scrollbar-none! min-h-full w-full overflow-x-auto overflow-y-clip md:h-auto md:min-h-0 md:overflow-x-visible md:overflow-y-visible md:pt-40 md:pb-12"
 		>
 			<div

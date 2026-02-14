@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { co } from 'jazz-tools';
 	import { flushSync } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Deck from '$lib/components/ui/deck/deck.svelte';
@@ -35,6 +36,9 @@
 		itemsShown = $bindable(0)
 	}: DeckGridProps = $props();
 
+	// Use SvelteSet for reactive mutations without replacing the object
+	let visibleIds = new SvelteSet<string>();
+
 	// Extract deck ID from a path like /deck/[deckId] or /edit/deck/[deckId]
 	function getDeckIdFromPath(pathname: string | null): string | null {
 		if (!pathname) return null;
@@ -53,51 +57,47 @@
 	// Track which deck's remove confirmation is shown
 	let showRemoveConfirmForDeck = $state<string | null>(null);
 
-	const handleEditClick = $derived((event: MouseEvent, deckId: string) => {
+	function handleEditClick(event: MouseEvent, deckId: string) {
 		event.stopPropagation();
-		// Set selected deck before navigating so its cards get transition names
 		flushSync(() => {
 			overrideDeckId = deckId;
 		});
 		goto(`/edit/deck/${deckId}`);
-	});
+	}
 
-	const handleDeckSelect = $derived((deck: co.loaded<typeof DeckSchema>) => {
-		// Set selected deck before navigating so its cards get transition names
+	function handleDeckSelect(deck: co.loaded<typeof DeckSchema>) {
 		flushSync(() => {
 			overrideDeckId = deck.$jazz.id;
 		});
 		goto(`/deck/${deck.$jazz.id}`);
+	}
+
+	// When a deck is selected, only its cards get view transition names.
+	// Builds a Set for the selected deck (cheap), or a deduped Map across all decks (lazy fallback).
+	const selectedDeckCardIds = $derived.by(() => {
+		if (!selectedDeckId) return null;
+		const selectedDeck = decks.find((d) => d.$jazz.id === selectedDeckId);
+		if (!selectedDeck?.$isLoaded || !selectedDeck.cards.$isLoaded) return null;
+		const ids = new Set<string>();
+		for (const card of selectedDeck.cards) {
+			if (card?.$isLoaded) ids.add(card.$jazz.id);
+		}
+		return ids;
 	});
 
-	// When a deck is selected, only its cards get view transition names
-	// When no deck is selected, dedupe cards so each card only gets a name once (first occurrence)
-	const cardTransitionMap = $derived.by(() => {
-		const map = new Map<string, string>(); // cardId -> deckId that owns the transition name
-
-		if (selectedDeckId) {
-			// A deck is selected - only its cards get transition names
-			const selectedDeck = decks.find((d) => d.$jazz.id === selectedDeckId);
-			if (selectedDeck?.$isLoaded && selectedDeck.cards.$isLoaded) {
-				for (const card of selectedDeck.cards) {
-					if (card?.$isLoaded) {
-						map.set(card.$jazz.id, selectedDeckId);
-					}
-				}
-			}
-		} else {
-			// No deck selected - dedupe: first occurrence of each card gets the name
-			for (const deck of decks) {
-				if (!deck.$isLoaded || !deck.cards.$isLoaded) continue;
-				for (const card of deck.cards) {
-					if (!card?.$isLoaded) continue;
-					if (!map.has(card.$jazz.id)) {
-						map.set(card.$jazz.id, deck.$jazz.id);
-					}
+	// Fallback map only built when no deck is selected — first occurrence of each card wins
+	const fallbackTransitionMap = $derived.by(() => {
+		if (selectedDeckId) return null;
+		const map = new Map<string, string>();
+		for (const deck of decks) {
+			if (!deck.$isLoaded || !deck.cards.$isLoaded) continue;
+			for (const card of deck.cards) {
+				if (!card?.$isLoaded) continue;
+				if (!map.has(card.$jazz.id)) {
+					map.set(card.$jazz.id, deck.$jazz.id);
 				}
 			}
 		}
-
 		return map;
 	});
 
@@ -106,14 +106,21 @@
 		deckId: string,
 		card: co.loaded<typeof CardSchema>
 	): string | undefined {
-		const ownerDeckId = cardTransitionMap.get(card.$jazz.id);
-		if (ownerDeckId === deckId) {
+		if (selectedDeckCardIds) {
+			// Selected deck mode: only cards in the selected deck get names
+			if (deckId === selectedDeckId && selectedDeckCardIds.has(card.$jazz.id)) {
+				return `card-${card.$jazz.id}`;
+			}
+			return undefined;
+		}
+		// Fallback: first occurrence wins
+		if (fallbackTransitionMap?.get(card.$jazz.id) === deckId) {
 			return `card-${card.$jazz.id}`;
 		}
 		return undefined;
 	}
 
-	const handleRemove = $derived(async (deckId: string) => {
+	async function handleRemove(deckId: string) {
 		if (!layoutContext.me.current.$isLoaded) {
 			return;
 		}
@@ -126,7 +133,7 @@
 		if (!profile.decks.$isLoaded) return;
 
 		profile.decks.$jazz.remove((c) => c.$jazz.id === deckId);
-	});
+	}
 </script>
 
 <ItemGrid
@@ -140,6 +147,7 @@
 	bind:scrollIndex
 	bind:totalItems
 	bind:itemsShown
+	{visibleIds}
 	class="pointer-events-auto col-span-3 row-span-2 row-start-2 md:row-span-3 md:overflow-x-hidden! md:px-35"
 >
 	{#snippet header({ item, highlighted })}
@@ -156,6 +164,7 @@
 		</div>
 	{/snippet}
 	{#snippet children({ item, highlighted })}
+		{@const isVisible = visibleIds.size === 0 ? true : visibleIds.has(item.$jazz.id)}
 		<div
 			class="deck-grid-wrapper relative flex h-full w-full flex-col items-center justify-start border border-border md:overflow-x-visible!"
 		>
@@ -173,6 +182,7 @@
 						cards={item.cards}
 						class="deck-grid-deck"
 						getViewTransitionName={(card) => getViewTransitionName(item.$jazz.id, card)}
+						{isVisible}
 					/>
 				</div>
 			</div>

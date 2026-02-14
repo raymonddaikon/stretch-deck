@@ -16,6 +16,8 @@ function getLocalD1DB() {
 		}
 
 		const url = path.resolve(basePath, dbFile)
+		console.log(url)
+		console.log(process.env.NODE_ENV === 'production')
 		return url
 	} catch (err) {
 		console.log(`Error  ${err}`)

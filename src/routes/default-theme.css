@@ -21,6 +21,24 @@
 }
 
 @font-face {
+	font-family: 'Geist Pixel Square';
+	font-display: swap;
+	src:
+		local('Geist Pixel Square'),
+		url('/fonts/GeistPixel-Square.woff2') format('woff2');
+	font-feature-settings: 'locl';
+}
+
+@font-face {
+	font-family: 'Geist Pixel Grid';
+	font-display: swap;
+	src:
+		local('Geist Pixel Grid'),
+		url('/fonts/GeistPixel-Grid.woff2') format('woff2');
+	font-feature-settings: 'locl';
+}
+
+@font-face {
 	font-family: 'BestTen CRT';
 	font-display: swap;
 	src:
@@ -108,6 +126,7 @@
 
 	--font-sans: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, sans-serif;
 	--font-mono: 'Departure Mono', 'BestTen CRT', Consolas, monaco, monospace;
+	--font-display: 'Geist Pixel Square', 'BestTen CRT';
 	--font-serif: Georgia, 'Times New Roman', serif;
 
 	/*--text-xxxs: 0.5rem;
@@ -155,7 +174,7 @@
 	/* 121px */
 	--text-5xl: round(nearest, 6.95rem, 1px);
 	--text-5xl--line-height: 1;
-	--text-5xl--letter-spacing: -11px;
+	/*--text-5xl--letter-spacing: -11px;*/
 
 	/*clamp(55px, 7.5vi + 25px, 121px)*/
 	/*--text-fluid-5xl: clamp(4rem, 6.25vi + 41px, round(nearest, 7.33rem, 1px));
@@ -382,6 +401,7 @@
 		font-variant-numeric: tabular-nums lining-nums;
 		--font-family: -apple-system, BlinkMacSystemFont, helvetica neue, helvetica, sans-serif;
 		--font-family-mono: 'Departure Mono', 'BestTen CRT', Consolas, monaco, monospace;
+		--font-display: 'Geist Pixel Square', 'BestTen CRT';
 		--font-family-serif: Georgia, Times New Roman, serif;
 
 		/*--theme-text: var(--color-black-100);*/

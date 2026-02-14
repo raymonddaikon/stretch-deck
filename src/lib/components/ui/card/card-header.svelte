@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { co } from 'jazz-tools';
+	import { CoValueLoadingState, co, ImageDefinition } from 'jazz-tools';
 	import { highestResAvailable } from 'jazz-tools/media';
+	import { CoState } from 'jazz-tools/svelte';
 	import { watch } from 'runed';
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { Spring } from 'svelte/motion';
 
 	interface Props {
@@ -14,6 +15,8 @@
 		thumbnails?: co.loaded<co.List<co.Image>> | null;
 		/** Preview URLs (data URLs) - alternative to thumbnails for preview mode */
 		previewUrls?: (string | null)[];
+		/** Whether this card is currently visible in the viewport */
+		isVisible?: boolean;
 	}
 
 	let {
@@ -23,54 +26,97 @@
 		rowOffset = 6,
 		class: className = '',
 		thumbnails = null,
-		previewUrls
+		previewUrls,
+		isVisible = true
 	}: Props = $props();
-
-	// Track blob URLs for cleanup
-	let blobUrls: string[] = [];
 
 	// Determine if we're in preview mode (using data URLs instead of Jazz thumbnails)
 	const isPreviewMode = $derived(!!previewUrls && previewUrls.length > 0);
 
-	// Extract image URLs and placeholder data URLs from thumbnails or preview URLs
-	let imageData = $derived.by(() => {
+	// Extract image IDs from thumbnails for per-image reactive loading
+	const thumbnailIds = $derived.by(() => {
+		if (!thumbnails || thumbnails.length === 0) return [null, null, null];
+		const ids: (string | null)[] = [null, null, null];
+		for (let i = 0; i < Math.min(thumbnails.length, 3); i++) {
+			const thumbnail = thumbnails[i];
+			if (thumbnail?.$isLoaded) {
+				ids[i] = thumbnail.$jazz.id;
+			}
+		}
+		return ids;
+	});
+
+	// Create per-image CoState instances for reactive loading.
+	// CoState subscribes to each ImageDefinition and re-triggers derived
+	// computations as image resolution data loads progressively.
+	const imageState0 = new CoState(ImageDefinition, () => thumbnailIds[0] ?? undefined);
+	const imageState1 = new CoState(ImageDefinition, () => thumbnailIds[1] ?? undefined);
+	const imageState2 = new CoState(ImageDefinition, () => thumbnailIds[2] ?? undefined);
+	const imageStates = [imageState0, imageState1, imageState2];
+
+	// Track blob URLs by image ID for caching and cleanup
+	let blobUrlCache = new Map<string, string>();
+
+	function revokeObjectURL(url: string | undefined) {
+		if (url?.startsWith('blob:')) {
+			URL.revokeObjectURL(url);
+		}
+	}
+
+	// Derive image URLs from CoState instances or preview URLs.
+	// This re-runs reactively as each CoState updates when image data loads.
+	let imageUrls = $derived.by(() => {
 		// Preview mode: use data URLs directly
 		if (isPreviewMode && previewUrls) {
-			const validUrls = previewUrls.filter((url): url is string => url !== null);
-			return { urls: validUrls, placeholders: [] };
+			return previewUrls.filter((url): url is string => url !== null);
 		}
 
-		// Normal mode: extract from Jazz thumbnails
-		if (!thumbnails || thumbnails.length === 0) return { urls: [], placeholders: [] };
+		const urls: string[] = [];
+		const activeIds = new Set<string>();
 
-		blobUrls.forEach((url) => {
-			if (url.startsWith('blob:')) URL.revokeObjectURL(url);
-		});
+		for (let i = 0; i < 3; i++) {
+			const image = imageStates[i].current;
 
-		const newUrls: string[] = [];
-		const placeholders: (string | undefined)[] = [];
+			if (image.$jazz.loadingState === CoValueLoadingState.LOADING) continue;
+			if (!image.$isLoaded) continue;
 
-		for (const thumbnail of thumbnails) {
-			if (!thumbnail?.$isLoaded) continue;
-			const bestImage = highestResAvailable(thumbnail, 800, 800);
+			const imageId = image.$jazz.id;
+			activeIds.add(imageId);
+
+			// Return cached blob URL if we already have one
+			const cached = blobUrlCache.get(imageId);
+			if (cached) {
+				urls.push(cached);
+				continue;
+			}
+
+			const bestImage = highestResAvailable(image, 800, 800);
 			if (!bestImage) continue;
+
 			const blob = bestImage.image.toBlob();
 			if (blob) {
-				newUrls.push(URL.createObjectURL(blob));
-				placeholders.push(thumbnail.placeholderDataURL);
+				const url = URL.createObjectURL(blob);
+				blobUrlCache.set(imageId, url);
+				urls.push(url);
 			}
 		}
 
-		blobUrls = newUrls;
-		return { urls: newUrls, placeholders };
+		// Evict blob URLs for image IDs that are no longer active
+		for (const [id, url] of blobUrlCache) {
+			if (!activeIds.has(id)) {
+				revokeObjectURL(url);
+				blobUrlCache.delete(id);
+			}
+		}
+
+		return urls;
 	});
 
-	let imageUrls = $derived(imageData.urls);
-
 	onDestroy(() => {
-		blobUrls.forEach((url) => {
-			if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+		blobUrlCache.forEach((url) => {
+			revokeObjectURL(url);
 		});
+		blobUrlCache.clear();
 	});
 
 	let cvsComposite: HTMLCanvasElement;
@@ -82,6 +128,9 @@
 	let height = $state(800);
 	let loadedImages: HTMLImageElement[] = $state([]);
 	let isLoaded = $state(false);
+	let isIntersecting = $state(false);
+	let containerElement: HTMLElement | undefined = $state();
+	let intersectionObserver: IntersectionObserver | null = null;
 
 	// For 1 image: just use the single image
 	// For 2+ images: use first 2 or 3 images directly
@@ -103,16 +152,47 @@
 		precision: 0.001
 	});
 
+	// Track the number of URLs that were last preloaded, so we can
+	// re-preload when more images finish loading (progressive Jazz loading).
+	let lastPreloadedCount = 0;
+
+	// Reset loaded state when thumbnails change (e.g. component reused for a different card)
+	let prevThumbnailRef: typeof thumbnails = thumbnails;
 	$effect(() => {
-		if (imageUrls.length > 0) {
-			untrack(() => preload());
+		const current = thumbnails;
+		if (current !== prevThumbnailRef) {
+			prevThumbnailRef = current;
+			isLoaded = false;
+			loadedImages = [];
+			lastPreloadedCount = 0;
+			// Clear canvas
+			ctxComposite?.clearRect(0, 0, width, height);
+			ctxBarrier?.clearRect(0, 0, width, height);
+			// Clear blob cache
+			blobUrlCache.forEach((url) => {
+				revokeObjectURL(url);
+			});
+			blobUrlCache.clear();
+		}
+	});
+
+	// Preload when visible and images are available, or when the set of
+	// available images grows (e.g. Jazz loads additional resolutions).
+	$effect(() => {
+		const visible = isVisible || isIntersecting;
+		const hasImages = imageUrls.length > 0;
+		const moreImagesAvailable = imageUrls.length !== lastPreloadedCount;
+
+		if (visible && hasImages && (!isLoaded || moreImagesAvailable)) {
+			lastPreloadedCount = imageUrls.length;
+			preload();
 		}
 	});
 
 	watch(
 		() => [gridWidth, rowHeight, rowOffset],
 		() => {
-			if (isLoaded && loadedImages.length === imageUrls.length) {
+			if (isLoaded && loadedImages.length === imageUrls.length && (isVisible || isIntersecting)) {
 				rebuild();
 			}
 		}
@@ -122,9 +202,69 @@
 		smoothTiltY.set(tiltY);
 	});
 
+	// Barrier update via rAF loop — avoids reactive $effect on every spring tick.
+	// The loop runs only while the card is loaded and visible, reading the spring
+	// value directly each frame instead of subscribing reactively.
+	let barrierRaf: number | null = null;
+	let lastBarrierTilt: number | undefined;
+
+	function barrierLoop() {
+		barrierRaf = requestAnimationFrame(barrierLoop);
+		const tiltValue = smoothTiltY.current;
+		if (tiltValue !== lastBarrierTilt) {
+			lastBarrierTilt = tiltValue;
+			updateBarrier(tiltValue);
+		}
+	}
+
 	$effect(() => {
-		if (isLoaded && loadedImages.length === imageUrls.length) {
-			updateBarrier(smoothTiltY.current);
+		const shouldRun =
+			isLoaded && loadedImages.length === imageUrls.length && (isVisible || isIntersecting);
+		if (shouldRun) {
+			if (!barrierRaf) {
+				lastBarrierTilt = undefined;
+				barrierLoop();
+			}
+		} else if (barrierRaf) {
+			cancelAnimationFrame(barrierRaf);
+			barrierRaf = null;
+		}
+		return () => {
+			if (barrierRaf) {
+				cancelAnimationFrame(barrierRaf);
+				barrierRaf = null;
+			}
+		};
+	});
+
+	// OPTIMIZATION: Intersection Observer to pause when off-screen
+	onMount(() => {
+		if (containerElement && 'IntersectionObserver' in window) {
+			intersectionObserver = new IntersectionObserver(
+				(entries) => {
+					const [entry] = entries;
+					isIntersecting = entry.isIntersecting;
+					// Preload when becoming visible
+					if (entry.isIntersecting && imageUrls.length > 0 && !isLoaded) {
+						preload();
+					}
+				},
+				{
+					root: null,
+					rootMargin: '100px', // Start loading slightly before visible
+					threshold: 0
+				}
+			);
+			intersectionObserver.observe(containerElement);
+		} else {
+			// Fallback: always consider intersecting if observer not available
+			isIntersecting = true;
+		}
+	});
+
+	onDestroy(() => {
+		if (intersectionObserver) {
+			intersectionObserver.disconnect();
 		}
 	});
 
@@ -136,9 +276,20 @@
 	}
 
 	function preload() {
+		// Don't preload if already loaded with same URLs
+		if (isLoaded && loadedImages.length === imageUrls.length) {
+			const allMatch = loadedImages.every((img, i) => img.src === imageUrls[i]);
+			if (allMatch) return;
+		}
+
 		isLoaded = false;
+		loadedImages = []; // Clear previous images
 		const newImages: HTMLImageElement[] = [];
 		let loadedCount = 0;
+
+		if (imageUrls.length === 0) {
+			return;
+		}
 
 		imageUrls.forEach((url, index) => {
 			const img = new Image();
@@ -152,14 +303,27 @@
 					init();
 				}
 			};
+			img.onerror = () => {
+				loadedCount++;
+				// Still count as loaded to avoid hanging, but image will be blank
+				if (loadedCount === imageUrls.length) {
+					loadedImages = newImages;
+					init();
+				}
+			};
 		});
 	}
 
 	function init() {
 		if (!cvsComposite || !cvsBarrier) return;
+		if (loadedImages.length === 0) return;
 
-		width = Math.min(...loadedImages.map((img) => img.width));
-		height = Math.min(...loadedImages.map((img) => img.height));
+		// Get dimensions from smallest image
+		const validImages = loadedImages.filter((img) => img.complete && img.width > 0);
+		if (validImages.length === 0) return;
+
+		width = Math.min(...validImages.map((img) => img.width));
+		height = Math.min(...validImages.map((img) => img.height));
 
 		cvsComposite.width = width;
 		cvsComposite.height = height;
@@ -280,9 +444,14 @@
 	}
 </script>
 
-<div class="pointer-events-none relative overflow-hidden transform-flat {className}">
-	<canvas bind:this={cvsComposite} class="pixelated absolute inset-0 z-10 block h-full w-full" />
-	<canvas bind:this={cvsBarrier} class="pixelated absolute inset-0 z-20 block h-full w-full" />
+<div
+	bind:this={containerElement}
+	class="pointer-events-none relative overflow-hidden transform-flat {className}"
+>
+	<canvas bind:this={cvsComposite} class="pixelated absolute inset-0 z-10 block h-full w-full"
+	></canvas>
+	<canvas bind:this={cvsBarrier} class="pixelated absolute inset-0 z-20 block h-full w-full"
+	></canvas>
 </div>
 
 <style>

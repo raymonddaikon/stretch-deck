@@ -11,6 +11,7 @@
 	import * as Field from '$lib/components/ui/field';
 	import ItemGrid from '$lib/components/ui/grids/item-grid.svelte';
 	import { Input } from '$lib/components/ui/input';
+	import BlockLoader from '$lib/components/ui/loader/block-loader.svelte';
 	import SortDeck from '$lib/components/ui/sortable/sort-deck.svelte';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
@@ -49,6 +50,10 @@
 
 	const buttonLabel = $derived(mode === 'create' ? m.create_deck() : m.save_deck());
 
+	// Track the current stage: editing or preview
+	let stage = $state<'editing' | 'preview'>('editing');
+	// Track loading state when creating deck
+	let isCreatingDeck = $state(false);
 	// Track selected cards for the deck (using array to preserve order)
 	// Initialize from initialDeck if provided
 	let selectedCardIds = $state<string[]>(
@@ -285,23 +290,19 @@
 			.map((id) => cards.find((card) => card.$jazz.id === id))
 			.filter((card) => !!card?.$isLoaded);
 		if (mode === 'create') {
-			const newDeckOwnerGroup = co.group().create({ owner: layoutContext.me.current }).makePublic();
-			// Map selectedCardIds to cards in the same order to ensure indices align
-
-			const newDeck = DeckSchema.create(
-				{
-					name: result.data.name,
-					description: result.data.description,
-					cards: cardsInOrder,
-					activity: ActivityFeed.create([]),
-					shareSecret: newDeckOwnerGroup.$jazz.createInvite('reader'),
-					creator: layoutContext.me.current.profile
-				},
-				{ owner: newDeckOwnerGroup }
-			);
-			layoutContext.me.current.profile.decks.$jazz.push(newDeck);
-
-			goto('/decks');
+			// Switch to preview mode with view transition
+			if (document.startViewTransition) {
+				document.startViewTransition({
+					update() {
+						flushSync(() => {
+							stage = 'preview';
+						});
+					},
+					types: ['deck-preview-transition']
+				});
+			} else {
+				stage = 'preview';
+			}
 		} else if (initialDeck) {
 			initialDeck.$jazz.applyDiff({
 				name: result.data.name,
@@ -312,6 +313,57 @@
 			}
 
 			goto('/decks');
+		}
+	}
+
+	/** Go back to editing from preview */
+	function handleBackToEdit() {
+		if (document.startViewTransition) {
+			document.startViewTransition({
+				update() {
+					flushSync(() => {
+						stage = 'editing';
+					});
+				},
+				types: ['deck-preview-transition']
+			});
+		} else {
+			stage = 'editing';
+		}
+	}
+
+	/** Complete deck creation after preview */
+	async function handleComplete() {
+		if (!layoutContext.me.current.$isLoaded || isCreatingDeck) return;
+
+		// Set loading state to prevent duplicate submissions
+		isCreatingDeck = true;
+
+		try {
+			const cardsInOrder = selectedCardIds
+				.map((id) => cards.find((card) => card.$jazz.id === id))
+				.filter((card) => !!card?.$isLoaded);
+
+			const newDeckOwnerGroup = co.group().create({ owner: layoutContext.me.current }).makePublic();
+
+			const newDeck = DeckSchema.create(
+				{
+					name: deckName,
+					description: deckDescription,
+					cards: cardsInOrder,
+					activity: ActivityFeed.create([]),
+					shareSecret: newDeckOwnerGroup.$jazz.createInvite('reader'),
+					creator: layoutContext.me.current.profile
+				},
+				{ owner: newDeckOwnerGroup }
+			);
+			layoutContext.me.current.profile.decks.$jazz.push(newDeck);
+
+			goto('/decks');
+		} catch (error) {
+			// Reset loading state on error
+			isCreatingDeck = false;
+			console.error('Error creating deck:', error);
 		}
 	}
 
@@ -412,8 +464,43 @@
 	}
 </script>
 
+{#if stage === 'preview'}
+	<div
+		class="deck-preview-page pointer-events-auto col-span-3 row-span-2 row-start-2"
+		style:view-transition-name={stage === 'preview' ? 'deck-preview-page' : undefined}
+	>
+		<div class="deck-preview-page-inner">
+			<Deck
+				class="deck-preview-page-deck"
+				viewTransitionName="deck-preview"
+				cards={selectedCards as any as co.loaded<co.List<typeof CardSchema>>}
+			/>
+			<div class="preview-buttons" style:view-transition-name="preview-buttons">
+				<button class="button" onclick={handleComplete} disabled={isCreatingDeck}>
+					{#if isCreatingDeck}
+						<span class="inline-flex items-center gap-2">
+							<BlockLoader />
+							{m.complete()}
+						</span>
+					{:else}
+						{m.complete()}
+					{/if}
+				</button>
+				<button
+					class="button transition-colors"
+					onclick={handleBackToEdit}
+					disabled={isCreatingDeck}
+				>
+					{m.edit()}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
 <div
 	class="deck-editor-container scrollbar-thin pointer-events-auto col-span-3 row-span-3 grid grid-cols-1 grid-rows-[220px_1fr] overflow-visible md:grid-cols-[150px_1fr_300px]"
+	class:hidden={stage === 'preview'}
+	style:view-transition-name={stage !== 'preview' ? 'deck-editor-container' : undefined}
 >
 	<!-- Deck preview area - top right on small screens (row 1), right column on md+ -->
 	<div
@@ -448,6 +535,7 @@
 							getViewTransitionName={getDeckCardTransitionNameFromMap}
 							transitionKey={deckCardTransitionNames}
 							onCardClick={switchToSortMode}
+							viewTransitionName={stage === 'editing' ? 'deck-preview' : undefined}
 							class="deck-preview-deck pointer-events-auto z-100"
 						/>
 					</div>
@@ -463,6 +551,7 @@
 			<form
 				class="pointer-events-auto relative z-100 flex h-[calc(100%-3.375rem)] w-full flex-1 flex-col items-start justify-start pr-1 md:h-full md:gap-4 md:pt-4 md:pr-0"
 				onsubmit={handleSubmit}
+				style:view-transition-name="editor-form"
 			>
 				<Field.Group class="flex max-h-full w-full flex-1 flex-col gap-1 md:gap-2">
 					<Field.Field class="flex min-w-0 gap-1" data-invalid={!!errors}>
@@ -548,8 +637,9 @@
 	<!-- Grid area - full width row 2 on small screens, columns 1-2 rows 1-3 on md+ -->
 	<!-- Shows either card selection grid or sort grid based on editor mode -->
 	<div
-		class="relative z-0 col-span-1 row-span-1 row-start-2 overflow-visible md:col-span-2 md:row-span-3 md:row-start-1"
+		class="card-grid-area relative z-0 col-span-1 row-span-1 row-start-2 overflow-visible md:col-span-2 md:row-span-3 md:row-start-1"
 		data-mode={editorMode}
+		style:view-transition-name="card-grid-area"
 	>
 		{#if editorMode === 'select'}
 			<ItemGrid
@@ -723,5 +813,60 @@
 		flex-direction: column;
 		height: 100%;
 		overflow: hidden;
+	}
+
+	/* Preview page - matches the deck page layout */
+	.deck-preview-page {
+		container-type: size;
+		width: 100%;
+		height: 100%;
+		position: relative;
+	}
+
+	.deck-preview-page-inner {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		/* Deck is 360px wide, cards are 540px tall, 2 buttons ~88px + gap */
+		width: 360px;
+		height: 628px;
+		translate: -50% -50%;
+		scale: min(calc(100cqh / 628px), calc(100cqw / 360px));
+	}
+
+	.deck-preview-page-inner :global(.deck-preview-page-deck) {
+		width: 100%;
+		height: 540px;
+	}
+
+	/* Match the Deck component's complete-button-wrapper positioning */
+	.preview-buttons {
+		width: min(360px, 90%);
+		margin-top: 0.75rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		animation: fade-in 0.3s ease-in-out;
+	}
+
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	/* View transition for deck moving to/from center */
+	:global(::view-transition-old(deck-preview)),
+	:global(::view-transition-new(deck-preview)) {
+		animation-duration: 0.35s;
+		animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	/* Hidden state */
+	.hidden {
+		display: none !important;
 	}
 </style>

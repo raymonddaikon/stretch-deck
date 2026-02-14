@@ -9,13 +9,14 @@
 	} from 'jazz-tools';
 	import { createImage } from 'jazz-tools/media';
 	import { flushSync } from 'svelte';
-	import { MediaQuery } from 'svelte/reactivity';
-	import { SvelteSet } from 'svelte/reactivity';
+	import { MediaQuery, SvelteSet } from 'svelte/reactivity';
 	import type { ZodError } from 'zod';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
+	import { Card } from '$lib/components/ui/card';
 	import * as Field from '$lib/components/ui/field';
 	import { Input } from '$lib/components/ui/input';
+	import BlockLoader from '$lib/components/ui/loader/block-loader.svelte';
 	import TagsInput from '$lib/components/ui/tags-input/tags-input.svelte';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import { type RarityTier, rarityTiers } from '$lib/constants';
@@ -23,7 +24,6 @@
 	import * as m from '$lib/paraglide/messages';
 	import { ActivityFeed, Card as CardSchema, StretchCard, StretchDeckAccount } from '$lib/schema';
 	import { cn } from '$lib/utils';
-	import { Card } from '$lib/components/ui/card';
 	import CardEditorHeader from './card-editor-header.svelte';
 	import { schema, UNITS_OPTIONS, type Units } from './schema';
 
@@ -53,6 +53,8 @@
 	let newCardId = $state<string | null>(null);
 	// Track the current stage: editing or preview
 	let stage = $state<'editing' | 'preview'>('editing');
+	// Track loading state when creating card
+	let isCreatingCard = $state(false);
 	// Track flip animation state: 'none' | 'flip-in' | 'flip-out'
 	let flipAnimation = $state<'none' | 'flip-in' | 'flip-out'>('none');
 	// Store preview data for the Card component (raw data, no Jazz schema)
@@ -165,9 +167,11 @@
 		await deleteCoValues(CardSchema, initialCard.$jazz.id, {
 			resolve: {
 				thumbnails: {
-					$each: {
-						file: true
-					}
+					$each: true
+					// $each: {
+					// 	original: true,
+					// 	file: true
+					// }
 				},
 				activity: {
 					$each: true
@@ -273,56 +277,66 @@
 
 	/** Complete card creation after preview */
 	async function handleComplete() {
-		if (!previewData || !layoutContext.me.current.$isLoaded) return;
+		if (!previewData || !layoutContext.me.current.$isLoaded || isCreatingCard) return;
 
-		const newCardOwnerGroup = co.group().create({ owner: layoutContext.me.current }).makePublic();
+		// Set loading state to prevent duplicate submissions
+		isCreatingCard = true;
 
-		// Convert thumbnail URLs to Jazz images
-		const validImages = (previewData.thumbnailUrls ?? []).filter(
-			(img): img is string => img !== null
-		);
-		const imageBlobs = await Promise.all(validImages.map((img) => dataUrlToBlob(img)));
-		const convertedImages: ImageDefinition[] = await Promise.all(
-			imageBlobs.map((blob) =>
-				createImage(blob, {
-					owner: newCardOwnerGroup,
-					maxSize: 1024,
-					placeholder: 'blur',
-					progressive: true
-				})
-			)
-		);
+		try {
+			const newCardOwnerGroup = co.group().create({ owner: layoutContext.me.current }).makePublic();
 
-		// Create the actual Jazz card
-		const newCard = StretchCard.create(
-			{
-				type: 'stretch',
-				name: previewData.name,
-				areas: previewData.areas,
-				reps: previewData.reps,
-				units: previewData.units as Units,
-				sets: previewData.sets,
-				description: previewData.description,
-				thumbnails: co.list(co.image()).create(convertedImages),
-				shareSecret: newCardOwnerGroup.$jazz.createInvite('reader'),
-				activity: ActivityFeed.create([]),
-				creator: layoutContext.me.current.profile
-			},
-			{ owner: newCardOwnerGroup }
-		);
+			// Convert thumbnail URLs to Jazz images
+			const validImages = (previewData.thumbnailUrls ?? []).filter(
+				(img): img is string => img !== null
+			);
+			const imageBlobs = await Promise.all(validImages.map((img) => dataUrlToBlob(img)));
+			const convertedImages: ImageDefinition[] = await Promise.all(
+				imageBlobs.map((blob) =>
+					createImage(blob, {
+						owner: newCardOwnerGroup,
+						maxSize: 1024,
+						placeholder: 'blur',
+						progressive: true
+					})
+				)
+			);
 
-		// Add to user's cards list
-		layoutContext.me.current.profile.cards.$jazz.push(newCard);
+			// Create the actual Jazz card
+			const newCard = StretchCard.create(
+				{
+					type: 'stretch',
+					name: previewData.name,
+					areas: previewData.areas,
+					reps: previewData.reps,
+					units: previewData.units as Units,
+					sets: previewData.sets,
+					description: previewData.description,
+					thumbnails: co.list(co.image()).create(convertedImages),
+					shareSecret: newCardOwnerGroup.$jazz.createInvite('reader'),
+					activity: ActivityFeed.create([]),
+					creator: layoutContext.me.current.profile
+				},
+				{ owner: newCardOwnerGroup }
+			);
 
-		const cardId = newCard.$jazz.id;
+			// Add to user's cards list
+			layoutContext.me.current.profile.cards.$jazz.push(newCard);
 
-		// Set the new card ID to trigger the view transition
-		flushSync(() => {
-			newCardId = cardId;
-		});
+			const cardId = newCard.$jazz.id;
 
-		// Navigate to cards page - the view transition will animate the card into place
-		goto('/cards');
+			// Set the new card ID to trigger the view transition
+			flushSync(() => {
+				newCardId = cardId;
+			});
+
+			// Navigate to cards page - the view transition will animate the card into place
+			goto('/cards');
+		} catch (error) {
+			// Reset loading state on error
+			isCreatingCard = false;
+			console.error('Error creating card:', error);
+			// Optionally, you could show an error message to the user here
+		}
 	}
 
 	const allActivity = $derived.by(() => {
@@ -626,12 +640,20 @@
 					</button>
 				{/if}
 			{:else if stage === 'preview'}
-				<button class="button" onclick={handleComplete}>
-					{m.complete()}
+				<button class="button" onclick={handleComplete} disabled={isCreatingCard}>
+					{#if isCreatingCard}
+						<span class="inline-flex items-center gap-2">
+							<BlockLoader />
+							{m.complete()}
+						</span>
+					{:else}
+						{m.complete()}
+					{/if}
 				</button>
 				<button
 					class="transition-color w-full border border-border px-4 py-2 text-sm duration-300 hover:bg-border hover:text-black"
 					onclick={handleBackToEdit}
+					disabled={isCreatingCard}
 				>
 					{m.edit()}
 				</button>

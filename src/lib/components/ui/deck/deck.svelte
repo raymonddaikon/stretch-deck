@@ -35,6 +35,8 @@
 		onDeckComplete?: () => void;
 		/** Whether to show the Complete button. Defaults to true. */
 		showCompleteButton?: boolean;
+		/** Whether the deck is visible (for canvas optimization) */
+		isVisible?: boolean;
 	};
 
 	let {
@@ -50,7 +52,8 @@
 		onCardClick,
 		onCardComplete,
 		onDeckComplete,
-		showCompleteButton = true
+		showCompleteButton = true,
+		isVisible = true
 	}: Props = $props();
 
 	const length = $derived(
@@ -223,39 +226,31 @@
 	// Calculate which card is the front card
 	const frontCardIndex = $derived(Math.round(progress.value));
 
-	// Check if pointer is within a specific card's bounds
-	function isPointerOverCard(index: number): boolean {
-		const cardElement = cardElements.get(index);
-		if (!cardElement) return false;
-
-		const bounds = cardElement.getBoundingClientRect();
-		return (
-			mouseClientX >= bounds.left &&
-			mouseClientX <= bounds.right &&
-			mouseClientY >= bounds.top &&
-			mouseClientY <= bounds.bottom
-		);
-	}
-
-	// Calculate tilt for a given card index
+	// Calculate tilt for a given card index — only computes for the front card
 	function getTiltForCard(index: number) {
-		// Only apply tilt to the front card
 		if (index !== frontCardIndex) {
 			return { tiltX: 0, tiltY: 0 };
 		}
 
-		// Use device orientation on mobile, pointer position on desktop
 		if (isMobile.current) {
 			return layoutContext.getTilt(tiltRange);
 		}
 
-		// Desktop: only tilt if pointer is over the card
-		if (!isPointerOverCard(index)) {
-			return { tiltX: 0, tiltY: 0 };
-		}
+		// Only measure bounds for the front card
+		const cardElement = cardElements.get(index);
+		if (!cardElement) return { tiltX: 0, tiltY: 0 };
 
-		const tiltX = pointerY * -1 * tiltRange; // Tilt around X axis based on Y position
-		const tiltY = pointerX * tiltRange; // Tilt around Y axis based on X position
+		const bounds = cardElement.getBoundingClientRect();
+		const isOver =
+			mouseClientX >= bounds.left &&
+			mouseClientX <= bounds.right &&
+			mouseClientY >= bounds.top &&
+			mouseClientY <= bounds.bottom;
+
+		if (!isOver) return { tiltX: 0, tiltY: 0 };
+
+		const tiltX = pointerY * -1 * tiltRange;
+		const tiltY = pointerX * tiltRange;
 
 		return { tiltX, tiltY };
 	}
@@ -288,6 +283,8 @@
 		{#snippet renderCard(index)}
 			{@const { tiltX, tiltY } = getTiltForCard(index)}
 			{@const card = cards ? cards[index] : deck?.cards.$isLoaded ? deck.cards?.[index] : undefined}
+			{@const distanceFromFront = Math.abs(index - frontCardIndex)}
+			{@const isNearFront = distanceFromFront <= 5}
 			{#if card?.$isLoaded}
 				<Card
 					totalCards={length}
@@ -297,6 +294,7 @@
 					{direction}
 					{tiltX}
 					{tiltY}
+					{isNearFront}
 					isFlipped={flippedCards.has(index)}
 					onElementMount={(el) => setCardElement(index, el)}
 					{card}

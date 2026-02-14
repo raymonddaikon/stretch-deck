@@ -15,7 +15,8 @@
 	<h2
 		bind:this={heading}
 		class={cn(
-			'text-3xl leading-[1.3ch] text-black! select-none [word-spacing:-0.5ch] text-box-trim md:text-5xl md:leading-[1.44ch] md:-tracking-[0.15ch] md:text-box-normal',
+			'font-display text-3xl leading-[1.3ch] text-black! select-none text-box-trim md:text-5xl md:leading-[1.44ch] md:text-box-normal',
+			// md:-tracking-[0.15ch] [word-spacing:-0.5ch]
 			layoutContext.qrLink ? 'pr-17.5 md:pr-22.5' : 'pr-0'
 		)}
 		use:scramble={() => {

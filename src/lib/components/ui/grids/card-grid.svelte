@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { co } from 'jazz-tools';
-	import { MediaQuery, SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import { MediaQuery, SvelteSet } from 'svelte/reactivity';
 	import { Card } from '$lib/components/ui/card';
 	import { getLayoutContext } from '$lib/context/layout.svelte';
 	import { Card as CardSchema } from '$lib/schema';
@@ -31,11 +31,10 @@
 		return layoutContext.subscribeOrientation();
 	});
 
-	// Tilt state for each card in the grid (desktop pointer tracking)
-	let cardTilts = new SvelteMap<string, { tiltX: number; tiltY: number }>();
-
-	// Track which card is being hovered (for desktop)
+	// Track the single hovered card and its tilt (only one card hovered at a time)
 	let hoveredCardId = $state<string | null>(null);
+	let hoveredTilt = $state({ tiltX: 0, tiltY: 0 });
+	const zeroTilt = { tiltX: 0, tiltY: 0 };
 
 	// Track flipped state per card
 	let flippedCards = new SvelteSet<string>();
@@ -49,41 +48,38 @@
 	}
 
 	function handleCardPointerMove(cardId: string, event: PointerEvent) {
-		// Skip pointer tracking on mobile - we use device orientation instead
 		if (isMobile.current) return;
 
 		hoveredCardId = cardId;
 		const target = event.currentTarget as HTMLElement;
 		const bounds = target.getBoundingClientRect();
-		const posX = event.clientX - bounds.x;
-		const posY = event.clientY - bounds.y;
-		const ratioX = posX / bounds.width - 0.5;
-		const ratioY = posY / bounds.height - 0.5;
+		const ratioX = (event.clientX - bounds.x) / bounds.width - 0.5;
+		const ratioY = (event.clientY - bounds.y) / bounds.height - 0.5;
 
-		// Clamp to -1 to 1 range and convert to tilt degrees
 		const normalizedX = Math.max(-1, Math.min(1, ratioX * 2));
 		const normalizedY = Math.max(-1, Math.min(1, ratioY * 2));
 
-		cardTilts.set(cardId, {
-			tiltX: normalizedY * -tiltRange, // Tilt around X axis based on Y position
-			tiltY: normalizedX * tiltRange // Tilt around Y axis based on X position
-		});
+		hoveredTilt = {
+			tiltX: normalizedY * -tiltRange,
+			tiltY: normalizedX * tiltRange
+		};
 	}
 
-	function handleCardPointerLeave(cardId: string) {
+	function handleCardPointerLeave() {
 		if (isMobile.current) return;
 		hoveredCardId = null;
-		cardTilts.set(cardId, { tiltX: 0, tiltY: 0 });
+		hoveredTilt = zeroTilt;
 	}
 
 	function getCardTilt(cardId: string) {
-		// On mobile, use device orientation for all visible cards
 		if (isMobile.current) {
 			return layoutContext.getTilt(tiltRange);
 		}
-		// On desktop, use pointer-based tilt only for hovered card
-		return cardTilts.get(cardId) ?? { tiltX: 0, tiltY: 0 };
+		return cardId === hoveredCardId ? hoveredTilt : zeroTilt;
 	}
+
+	// Use SvelteSet for reactive mutations without replacing the object
+	let visibleIds = new SvelteSet<string>();
 </script>
 
 <ItemGrid
@@ -98,17 +94,19 @@
 	bind:scrollIndex
 	bind:totalItems
 	bind:itemsShown
+	{visibleIds}
 	class="pointer-events-auto col-span-3 row-span-2 row-start-2 md:row-span-3 md:overflow-x-hidden! md:px-35"
 >
 	{#snippet children({ item, highlighted })}
 		{@const tilt = getCardTilt(item.$jazz.id)}
+		{@const isVisible = visibleIds.size === 0 ? true : visibleIds.has(item.$jazz.id)}
 		<div class="flex h-full w-full items-center justify-center py-1">
 			<button
 				class="card-grid-item relative h-full w-full overflow-visible rounded-md"
 				class:ring-2={highlighted}
 				class:ring-accent-500={highlighted}
 				onpointermove={(e) => handleCardPointerMove(item.$jazz.id, e)}
-				onpointerleave={() => handleCardPointerLeave(item.$jazz.id)}
+				onpointerleave={handleCardPointerLeave}
 				onclick={() => handleCardClick(item.$jazz.id)}
 			>
 				<Card
@@ -119,6 +117,7 @@
 					tiltX={tilt.tiltX}
 					tiltY={tilt.tiltY}
 					{tiltRange}
+					isNearFront={isVisible}
 					isFlipped={flippedCards.has(item.$jazz.id)}
 					shadow={true}
 					class="card-grid-card"

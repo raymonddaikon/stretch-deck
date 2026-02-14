@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CoMap, co, type MaybeLoaded, type SingleCoFeedEntry } from 'jazz-tools';
+	import { co } from 'jazz-tools';
 	import { transform } from 'motion';
 	import { watch } from 'runed';
 	import { Spring } from 'svelte/motion';
@@ -35,7 +35,6 @@
 		tiltY?: number;
 		tiltRange?: number;
 		isFlipped?: boolean;
-		isActive?: boolean;
 		onElementMount?: (element: HTMLElement | undefined) => void;
 		// Glare/shine effect options
 		glareIntensity?: number;
@@ -52,6 +51,8 @@
 		card?: co.loaded<typeof CardSchema>;
 		previewData?: PreviewCardData;
 		aligned?: boolean;
+		/** Whether this card is near the front of the deck (within render distance) */
+		isNearFront?: boolean;
 		// View transition name for same-document view transitions
 		viewTransitionName?: string;
 	}
@@ -71,7 +72,6 @@
 		tiltY = 0,
 		tiltRange = 15,
 		isFlipped = false,
-		isActive = false,
 		onElementMount,
 		glareIntensity = 0.5,
 		glareHue = 270,
@@ -83,6 +83,7 @@
 		card,
 		previewData,
 		aligned = false,
+		isNearFront = true,
 		viewTransitionName
 	}: Props = $props();
 
@@ -115,14 +116,14 @@
 
 	$effect(() => {
 		// Slower exit animation
-		if (isActive || isFirst) {
+		if (isFirst) {
 			springActivation.stiffness = springConfig.stiffness;
 			springActivation.damping = springConfig.damping;
 		} else {
 			springActivation.stiffness = springConfig.stiffness * 0.3;
 			springActivation.damping = springConfig.damping * 0.6;
 		}
-		springActivation.set(isActive || isFirst ? 1 : 0);
+		springActivation.set(isFirst ? 1 : 0);
 	});
 
 	// Normalized pointer values for effects (0 to 1 range, with 0.5 as center)
@@ -233,27 +234,16 @@
 		}
 	);
 
-	// Compute transform values
-	const scale = $derived.by(() => {
-		if (isFirst) {
-			return transform(distanceFromFrontABS, [0, 0.5, 1], [1, 0.95, 1]);
-		}
-		return 1;
-	});
-
 	// Helper for linear interpolation without clamping
 	function interpolateUnclamped(
 		value: number,
 		inputRange: number[],
 		outputRange: number[]
 	): number {
-		// Find the segment
 		let i = 0;
 		for (i = 0; i < inputRange.length - 1; i++) {
 			if (value < inputRange[i + 1]) break;
 		}
-
-		// Clamp index to valid segment range
 		i = Math.min(i, inputRange.length - 2);
 
 		const inputStart = inputRange[i];
@@ -265,39 +255,41 @@
 		return outputStart + t * (outputEnd - outputStart);
 	}
 
-	const x = $derived.by(() => {
-		const inputRange = [-1, -0.5, 0, 0.5, 1];
-		const outputRange = aligned
+	// Consolidated transform computation — single derivation for all card positioning
+	const cardTransforms = $derived.by(() => {
+		const _dist = distanceFromFront;
+		const _distAbs = distanceFromFrontABS;
+
+		// scale
+		const scale = isFirst ? transform(_distAbs, [0, 0.5, 1], [1, 0.95, 1]) : 1;
+
+		// x
+		const xInputRange = [-1, -0.5, 0, 0.5, 1];
+		const xOutputRange = aligned
 			? isFirst
 				? [0, 77, 0, -77, 0]
 				: [0, 0, 0, 0, 0]
 			: isFirst
 				? [12, 77, 0, -77, -12]
 				: [12, 5, 0, -5, -12];
-		return interpolateUnclamped(distanceFromFront, inputRange, outputRange);
-	});
+		const x = interpolateUnclamped(_dist, xInputRange, xOutputRange);
 
-	const y = $derived.by(() => {
-		if (!aligned) return 0;
-		const inputRange = [-1, -0.5, 0, 0.5, 1];
-		const outputRange = isFirst ? [2, 0, 0, 0, 2] : [1.5, 1, 0, 1, 1.5];
-		return interpolateUnclamped(distanceFromFront, inputRange, outputRange);
-	});
+		// y
+		let y = 0;
+		if (aligned) {
+			const yOutputRange = isFirst ? [2, 0, 0, 0, 2] : [1.5, 1, 0, 1, 1.5];
+			y = interpolateUnclamped(_dist, [-1, -0.5, 0, 0.5, 1], yOutputRange);
+		}
 
-	const z = $derived.by(() => {
-		// Linear interpolation for z depth
-		// Use tighter stacking in aligned mode for a more compact deck appearance
+		// z
 		const zDepthPerCard = aligned ? -1 : -30;
-		return interpolateUnclamped(distanceFromFrontABS, [0, 1], [0, totalCards * zDepthPerCard]);
-	});
+		const z = interpolateUnclamped(_distAbs, [0, 1], [0, totalCards * zDepthPerCard]);
 
-	const rotateZ = $derived.by(() => {
-		// Linear interpolation from [0,1] -> [0, -2.4], extrapolated
-		return interpolateUnclamped(distanceFromFront, [0, 1], aligned ? [0, 0] : [0, -2.4]);
-	});
+		// rotateZ
+		const rZ = interpolateUnclamped(_dist, [0, 1], aligned ? [0, 0] : [0, -2.4]);
 
-	const rotateY = $derived.by(() => {
-		const fractional = distanceFromFrontABS % 1;
+		// rotateY
+		const fractional = _distAbs % 1;
 		const baseRotation = aligned
 			? isFirst
 				? transform(fractional, [0, 0.5, 1], [0, -45, 0])
@@ -305,58 +297,38 @@
 			: isFirst
 				? transform(fractional, [0, 0.5, 1], [0, -45, 0])
 				: transform(fractional, [0, 0.5, 1], [0, -20, 0]);
-		return baseRotation * direction;
+		const rY = baseRotation * direction;
+
+		// zIndex
+		const zIndex = Math.round(interpolateUnclamped(_dist, [-2, -1, 0, 0.7, 2], [-2, -1, 0, 0, -2]));
+
+		const transformStyle = `
+			perspective(1000px)
+			translateX(${x}%)
+			translateY(${y}%)
+			translateZ(${z}px)
+			rotateZ(${rZ}deg)
+			rotateY(calc(${rY}deg + var(--tilt-y)))
+			rotateX(var(--tilt-x))
+			scale(${scale})
+		`;
+
+		return { transformStyle, zIndex };
 	});
 
-	const zIndex = $derived.by(() => {
-		const inputRange = [-2, -1, 0, 0.7, 2];
-		const outputRange = [-2, -1, 0, 0, -2];
-		return Math.round(interpolateUnclamped(distanceFromFront, inputRange, outputRange));
-	});
+	// Combined activity derivation — single pass over all activity data.
+	// Gated by isNearFront to avoid expensive work for off-screen cards.
+	const activityData = $derived.by(() => {
+		const empty = {
+			calendarData: [] as {
+				date: Date;
+				value: number;
+				users: { id: string; name?: string; imageUrl?: string; completedAt?: Date }[];
+			}[],
+			totalDays: 0
+		};
+		if (!isNearFront || isPreviewMode || !card?.activity?.$isLoaded) return empty;
 
-	const transformStyle = $derived(`
-		perspective(1000px)
-		translateX(${x}%)
-		translateY(${y}%)
-		translateZ(${z}px)
-		rotateZ(${rotateZ}deg)
-		rotateY(calc(${rotateY}deg + var(--tilt-y)))
-		rotateX(var(--tilt-x))
-		scale(${scale})
-	`);
-
-	// const activity = new CoState(ActivityFeed, () => card.activity.$jazz.id);
-	const allActivity = $derived.by(() => {
-		const byUser = new Map<
-			string,
-			SingleCoFeedEntry<
-				MaybeLoaded<
-					{
-						readonly completed: Date;
-					} & CoMap
-				>
-			>[]
-		>();
-		// Skip activity loading in preview mode
-		if (!isPreviewMode && card?.activity?.$isLoaded) {
-			for (const entry of Object.values(card.activity.perAccount)) {
-				if (entry.value.$isLoaded) {
-					for (const ac of entry.all) {
-						const userId = ac.by?.$jazz?.id;
-						if (userId) {
-							const existing = byUser.get(userId) ?? [];
-							existing.push(ac);
-							byUser.set(userId, existing);
-						}
-					}
-				}
-			}
-		}
-		return byUser;
-	});
-
-	// Transform allActivity into calendar data format
-	const activityCalendarData = $derived.by(() => {
 		const dateMap = new Map<
 			string,
 			{
@@ -364,51 +336,56 @@
 				users: Map<string, { id: string; name?: string; imageUrl?: string; completedAt?: Date }>;
 			}
 		>();
+		const userDaySets = new Map<string, Set<string>>();
 
-		for (const [userId, activities] of allActivity.entries()) {
-			for (const activity of activities) {
-				if (activity.madeAt) {
-					const dateKey = new Date(activity.madeAt).toDateString();
-					const existing = dateMap.get(dateKey) ?? { count: 0, users: new Map() };
-					existing.count += 1;
+		for (const entry of Object.values(card.activity.perAccount)) {
+			if (!entry.value.$isLoaded) continue;
+			for (const ac of entry.all) {
+				const userId = ac.by?.$jazz?.id;
+				if (!userId || !ac.madeAt) continue;
 
-					// Add user info if not already present for this date
-					if (!existing.users.has(userId) && activity.by?.profile.$isLoaded) {
-						const profile = activity.by?.profile as unknown as co.loaded<typeof StretchDeckUser>;
-						existing.users.set(userId, {
-							id: userId,
-							name: profile?.name,
-							imageUrl: profile?.imageUrl,
-							completedAt: new Date(activity.madeAt)
-						});
-					}
+				const dateKey = new Date(ac.madeAt).toDateString();
 
-					dateMap.set(dateKey, existing);
+				// Calendar data
+				const existing = dateMap.get(dateKey) ?? { count: 0, users: new Map() };
+				existing.count += 1;
+				if (!existing.users.has(userId) && ac.by?.profile.$isLoaded) {
+					const profile = ac.by?.profile as unknown as co.loaded<typeof StretchDeckUser>;
+					existing.users.set(userId, {
+						id: userId,
+						name: profile?.name,
+						imageUrl: profile?.imageUrl,
+						completedAt: new Date(ac.madeAt)
+					});
 				}
+				dateMap.set(dateKey, existing);
+
+				// Total unique days per user
+				let userDays = userDaySets.get(userId);
+				if (!userDays) {
+					userDays = new Set();
+					userDaySets.set(userId, userDays);
+				}
+				userDays.add(dateKey);
 			}
 		}
 
-		return Array.from(dateMap.entries()).map(([dateStr, data]) => ({
+		let totalDays = 0;
+		for (const days of userDaySets.values()) {
+			totalDays += days.size;
+		}
+
+		const calendarData = Array.from(dateMap.entries()).map(([dateStr, data]) => ({
 			date: new Date(dateStr),
 			value: data.count,
 			users: Array.from(data.users.values())
 		}));
+
+		return { calendarData, totalDays };
 	});
 
-	const totalActivityDays = $derived.by(() => {
-		let totalUniqueDays = 0;
-		for (const activities of allActivity.values()) {
-			const userDays = new Set<string>();
-			for (const activity of activities) {
-				if (activity.madeAt) {
-					const day = new Date(activity.madeAt).toDateString();
-					userDays.add(day);
-				}
-			}
-			totalUniqueDays += userDays.size;
-		}
-		return totalUniqueDays;
-	});
+	const activityCalendarData = $derived(activityData.calendarData);
+	const totalActivityDays = $derived(activityData.totalDays);
 
 	const isHolographic = $derived(totalActivityDays >= 100);
 
@@ -488,7 +465,9 @@
 						>
 					</div>
 				</div>
-				<h3 class="card-title flex-1 text-left text-black uppercase select-none">
+				<h3
+					class="card-title flex-1 overflow-hidden text-left text-ellipsis whitespace-nowrap text-black uppercase select-none"
+				>
 					{cardName}
 				</h3>
 			</header>
@@ -496,15 +475,17 @@
 				<div
 					class="card-header-container relative col-span-6 row-span-1 aspect-3/2 w-full overflow-hidden transform-flat"
 				>
-					{#if isPreviewMode && previewData?.thumbnailUrls}
-						<!-- Preview mode: show images from data URLs -->
-						<CardHeader
-							{tiltY}
-							previewUrls={previewData.thumbnailUrls}
-							class="h-full w-full object-cover"
-						/>
-					{:else if card?.thumbnails.$isLoaded}
-						<CardHeader {tiltY} thumbnails={card.thumbnails} class="h-full w-full object-cover" />
+					{#if isNearFront}
+						{#if isPreviewMode && previewData?.thumbnailUrls}
+							<!-- Preview mode: show images from data URLs -->
+							<CardHeader
+								{tiltY}
+								previewUrls={previewData.thumbnailUrls}
+								class="h-full w-full object-cover"
+							/>
+						{:else if card?.thumbnails.$isLoaded}
+							<CardHeader {tiltY} thumbnails={card.thumbnails} class="h-full w-full object-cover" />
+						{/if}
 					{/if}
 					{#if isHolographic}
 						<div class="holo-shine"></div>
@@ -567,8 +548,12 @@
 						class="flex-none bg-foreground px-1.5 text-left text-sm text-black uppercase select-none"
 						>{m.title()}</span
 					>
-					<h3 class="flex-1 px-1 text-left text-base text-black uppercase select-none">
-						{cardName}
+					<h3
+						class="flex-1 overflow-hidden px-1 text-left text-base leading-5 text-black uppercase select-none"
+					>
+						<span class="block h-full overflow-hidden">
+							{cardName}
+						</span>
 					</h3>
 					{#if !isPreviewMode}
 						<div class="flex flex-none flex-row gap-px">
@@ -634,13 +619,17 @@
 	</div>
 {/snippet}
 
-<div bind:this={wrapperElement} class={cn('card-wrapper', className)} style:z-index={zIndex}>
+<div
+	bind:this={wrapperElement}
+	class={cn('card-wrapper', className)}
+	style:z-index={cardTransforms.zIndex}
+>
 	<article
 		class="card"
 		class:card-shadow={shadow}
 		class:card-glare={glareIntensity > 0}
 		data-is-active={springActivation.current >= 0.01}
-		style:transform={transformStyle}
+		style:transform={cardTransforms.transformStyle}
 		style:view-transition-name={viewTransitionName}
 		style:--tilt-x="{springTiltX.current}deg"
 		style:--tilt-y="{springTiltY.current * 3}deg"
