@@ -1,0 +1,75 @@
+/* ============================================
+ * DEFAULT THEME — "Blue Tint"
+ *
+ * To create a new theme, duplicate this file and change:
+ *   1. --tint value (shifts all derived colors)
+ *   2. Override any specific semantic variable as needed
+ *
+ * To swap themes:
+ *   - Build time: change the import in layout.css
+ *   - Runtime: load a different theme CSS dynamically,
+ *     or use class-based selectors (e.g. .theme-ocean :root { ... })
+ * ============================================ */
+
+:root {
+	color-scheme: light dark;
+	--radius: 0;
+
+	/* Base tint — all theme colors derive from this */
+	--tint: #0047ff;
+
+	/* Semantic colors */
+	--background: oklch(from var(--tint) 0.99 calc(c * 0.1) h);
+	/*--foreground: light-dark(
+		oklch(from var(--tint) 0.2 calc(c * 0.3) h),
+		oklch(from var(--tint) 0.88 calc(c * 0.2) h)
+	);*/
+	--foreground: oklch(0.88 0.054769 263.538);
+
+	--card: oklch(1 0 0);
+	--card-foreground: light-dark(oklch(from var(--tint) 0.65 c h), oklch(from var(--tint) 0.7 c h));
+
+	--popover: light-dark(
+		oklch(from var(--tint) 0.94 calc(c * 0.12) h),
+		oklch(from var(--tint) 0.3 calc(c * 0.2) h)
+	);
+	--popover-foreground: oklch(0.129 0.042 264.695);
+
+	--primary: oklch(0.208 0.042 265.755);
+	--primary-foreground: oklch(0.984 0.003 247.858);
+
+	--secondary: oklch(0.968 0.007 247.896);
+	--secondary-foreground: oklch(0.208 0.042 265.755);
+
+	--muted: oklch(0.968 0.007 247.896);
+	--muted-foreground: oklch(0.554 0.046 257.417);
+
+	--accent: oklch(0.968 0.007 247.896);
+	--accent-foreground: oklch(0.208 0.042 265.755);
+
+	--destructive: oklch(0.577 0.245 27.325);
+
+	--border: oklch(0.88 0.054769 263.538);
+	--input: light-dark(
+		oklch(from var(--tint) 0.97 calc(c * 0.08) h),
+		oklch(from var(--tint) 0.35 calc(c * 0.18) h)
+	);
+	--ring: var(--border);
+
+	/* Charts */
+	--chart-1: oklch(0.646 0.222 41.116);
+	--chart-2: oklch(0.6 0.118 184.704);
+	--chart-3: oklch(0.398 0.07 227.392);
+	--chart-4: oklch(0.828 0.189 84.429);
+	--chart-5: oklch(0.769 0.188 70.08);
+
+	/* Sidebar */
+	--sidebar: oklch(0.984 0.003 247.858);
+	--sidebar-foreground: oklch(0.129 0.042 264.695);
+	--sidebar-primary: oklch(0.208 0.042 265.755);
+	--sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+	--sidebar-accent: oklch(0.968 0.007 247.896);
+	--sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+	--sidebar-border: oklch(0.929 0.013 255.508);
+	--sidebar-ring: oklch(0.704 0.04 256.788);
+}

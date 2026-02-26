@@ -137,15 +137,8 @@
 		z-index: -100;
 		margin: 0;
 		background-image:
-			repeating-linear-gradient(
-				oklch(from #0047ff 0.9 calc(c * 0.2) h) 0 1px,
-				transparent 1px 100%
-			),
-			repeating-linear-gradient(
-				90deg,
-				oklch(from #0047ff 0.9 calc(c * 0.2) h) 0 1px,
-				transparent 1px 100%
-			);
+			repeating-linear-gradient(var(--border) 0 1px, transparent 1px 100%),
+			repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 100%);
 		background-size: round(nearest, var(--grid-x), 1px) round(nearest, var(--grid-y), 1px);
 		pointer-events: none;
 	}

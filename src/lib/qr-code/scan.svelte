@@ -393,7 +393,7 @@
 			type="button"
 			class="flex-1 border px-4 py-1 text-left text-sm font-medium transition-colors {activeTab ===
 			'camera'
-				? 'border-primary bg-card-foreground text-black'
+				? 'border-primary bg-foreground text-black'
 				: 'bg-foreground text-black hover:bg-muted'}"
 			onclick={() => (activeTab = 'camera')}
 		>
@@ -403,7 +403,7 @@
 			type="button"
 			class="flex-1 border px-4 py-1 text-left text-sm font-medium transition-colors {activeTab ===
 			'upload'
-				? 'border-primary bg-card-foreground text-black'
+				? 'border-primary bg-foreground text-black'
 				: 'bg-foreground text-black hover:bg-muted'}"
 			onclick={() => (activeTab = 'upload')}
 		>

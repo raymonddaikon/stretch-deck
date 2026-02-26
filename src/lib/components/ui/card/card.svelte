@@ -12,7 +12,7 @@
 	import { cn } from '$lib/utils';
 	import ActivityCalendar from '../activity-calendar/activity-calendar.svelte';
 	import QrShareButton from '../qr-share-button.svelte';
-	import CardHeader from './card-header.svelte';
+	import CardHeader from './card-header-crossfade.svelte';
 
 	/** Raw card data for preview mode (no Jazz schema required) */
 	interface PreviewCardData {
@@ -480,11 +480,17 @@
 							<!-- Preview mode: show images from data URLs -->
 							<CardHeader
 								{tiltY}
+								{tiltRange}
 								previewUrls={previewData.thumbnailUrls}
 								class="h-full w-full object-cover"
 							/>
 						{:else if card?.thumbnails.$isLoaded}
-							<CardHeader {tiltY} thumbnails={card.thumbnails} class="h-full w-full object-cover" />
+							<CardHeader
+								{tiltY}
+								{tiltRange}
+								thumbnails={card.thumbnails}
+								class="h-full w-full object-cover"
+							/>
 						{/if}
 					{/if}
 					{#if isHolographic}
@@ -543,7 +549,7 @@
 				{#if !isPreviewMode}
 					<QrShareButton {shareUrl} class="w-1/3 flex-none border-t-0 border-l-0" />
 				{/if}
-				<div class="flex flex-1 flex-col" class:border-l={!isPreviewMode}>
+				<div class="flex flex-1 flex-col border-border" class:border-l={!isPreviewMode}>
 					<span
 						class="flex-none bg-foreground px-1.5 text-left text-sm text-black uppercase select-none"
 						>{m.title()}</span
